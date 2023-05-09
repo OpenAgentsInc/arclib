@@ -35,7 +35,8 @@
     "testEnvironment": "node"
   },
   "engines": {
-    "node": ">=12"
+    "node": ">=12",
+    "yarn": ">=3"
   },
   "size-limit": [
     {
@@ -69,5 +70,6 @@
     "ts-jest": "^29.1.0",
     "tslib": "^2.5.0",
     "typescript": "^5.0.4"
-  }
+  },
+  "packageManager": "yarn@3.5.1"
 }
