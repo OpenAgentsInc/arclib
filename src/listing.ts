@@ -9,13 +9,22 @@ type TradeCommand = {
 	additionalData?: Record<string, string>;
       };
 
+const knownAliases = {
+	"expiration": /expi?r?a?t?i?o?n?/
+}
+
 function parseNameValuePairs(input: string): Record<string, string> {
 	const pairs = input.split(' ');
 	const result: Record<string, string> = {};
 
 	console.log("pairs", pairs);
 	pairs.forEach(pair => {
-		const [name, value] = pair.split(':');
+		let [name, value] = pair.split(':');
+		Object.entries(knownAliases).forEach(ent => {
+			if(name.match(ent[1])) {
+				name = ent[0]
+			}
+		})
 		result[name.trim().toLowerCase()] = value.trim();
 	});
 
@@ -27,7 +36,7 @@ export function parseDecimalNumber(number: string) {
 }
 
 export function parseCommand(command: string): TradeCommand {
-	const regex = /^(BUY|SELL)\s+([.\d,]+)-?([.\d,]+)\s*(\w+)\s*@\s*([\d,.]+)\s*\[(\w+)\]\s*(.*)?$/;
+	const regex = /^(B?U?Y?|S?E?L?L?)\s+([.\d,]+)-?([.\d,]+)\s*(\w+)\s*@\s*([\d,.]+)\s*\[(\w+)\]\s*(.*)?$/;
 	const matches = command.match(regex);
 
 	console.log(matches);

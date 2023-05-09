@@ -1,16 +1,11 @@
-# DTS User Guide
+# Arc utilities library
 
-Congrats! You just saved yourself hours of work by bootstrapping this project with DTS. Let’s get you oriented with what’s here and how to use it.
+Typescript utilities for interacting with ArcSpec trading chat channels and marketplace listings. 
 
-> This DTS setup is meant for developing libraries (not apps!) that can be published to NPM. If you’re looking to build a Node app, you could use `ts-node-dev`, plain `ts-node`, or simple `tsc`.
-
-> If you’re new to TypeScript, checkout [this handy cheatsheet](https://devhints.io/typescript)
 
 ## Commands
 
-DTS scaffolds your new library inside `/src`.
-
-To run DTS, use:
+To build and watch, use:
 
 ```bash
 npm start # or yarn start
