@@ -1,12 +1,12 @@
 type TradeCommand = {
-  action: 'BUY' | 'SELL';
+  action: 'BUY' | 'SELL' | 'buy' | 'sell';
   minAmount?: number;
   maxAmount: number;
   currency: string;
   price: number;
-  paymentTags: string[];
+  paymentTags: string
   expirationDays?: number;
-  additionalData?: Record<string, string>;
+  additionalData?: Record<string, number | string>;
 };
 
 const knownAliases = {
@@ -38,7 +38,7 @@ export function parseDecimalNumber(number: string) {
 
 export function parseCommand(command: string): TradeCommand {
   const regex =
-    /^(B?U?Y?|S?E?L?L?)\s+([.\d,]+)-?([.\d,]+)\s*(\w+)\s*@\s*([\d,.]+)\s*\[(\w+)\]\s*(.*)?$/;
+    /^(B?U?Y?|S?E?L?L?)\s+([.\d,]+)-?([.\d,]+)\s*(\w+)\s*@\s*([\d,.]+)\s*\[(\w+)\]\s*(.*)?$/i;
   const matches = command.match(regex);
 
   console.log(matches);
@@ -60,12 +60,12 @@ export function parseCommand(command: string): TradeCommand {
   ] = matches;
 
   const result: TradeCommand = {
-    action: action as 'BUY' | 'SELL',
+    action: action.toUpperCase() as 'BUY' | 'SELL',
     minAmount: minAmount ? parseDecimalNumber(minAmount) : undefined,
     maxAmount: parseDecimalNumber(maxAmount),
     currency,
     price: parseDecimalNumber(price),
-    paymentTags: [paymentTag],
+    paymentTags: paymentTag
   };
 
   const addData = parseNameValuePairs(additional);
@@ -79,4 +79,34 @@ export function parseCommand(command: string): TradeCommand {
   result.additionalData = addData;
 
   return result;
+}
+
+export function createCommand({
+  action,
+  minAmount,
+  maxAmount,
+  paymentTags,
+  currency,
+  price,
+  expirationDays,
+  additionalData,
+}: TradeCommand): string {
+  if (action.toLowerCase() !== "buy" && action.toLowerCase() !== "sell") {
+    throw new Error("Invalid action. Action must be either 'buy' or 'sell'");
+  }
+  if (!paymentTags) {
+    throw new Error("Invalid payment tags")
+  }
+  const strPrice = price.toString()
+  const amtRange = minAmount === maxAmount ? `${minAmount}` : `${minAmount}-${maxAmount}`;
+  const tags = paymentTags ? `[${paymentTags.toUpperCase()}] ` : "";
+  const expDays = expirationDays ? `EXP:${expirationDays}d` : "";
+  let addData = {...additionalData}
+  if (expirationDays)
+    addData["exp"] = expirationDays.toString() + "d"
+  const additionalFields = Object.entries(addData)
+    .filter(([key]) => key !== "expirationDays")
+    .map(([key, value]) => `${key.toUpperCase()}:${value}`)
+    .join(" ").trim();
+  return `${action.toUpperCase()} ${amtRange} ${currency} @ ${strPrice} ${tags}${additionalFields}`.trim();
 }
