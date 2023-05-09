@@ -1,7 +1,6 @@
 # Arc utilities library
 
-Typescript utilities for interacting with ArcSpec trading chat channels and marketplace listings. 
-
+Typescript utilities for interacting with ArcSpec trading chat channels and marketplace listings.
 
 ## Commands
 

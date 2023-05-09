@@ -3,6 +3,7 @@
   "include": ["src", "types"],
   "compilerOptions": {
     "module": "esnext",
-    "types": ["jest", "node"]
+    "types": ["jest", "node"],
+    "lib": ["es2017"]
   }
 }
