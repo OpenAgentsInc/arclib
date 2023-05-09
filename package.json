@@ -33,7 +33,6 @@
   "jest": {
     "testEnvironment": "node"
   },
-  "peerDependencies": {},
   "engines": {
     "node": ">=12"
   },
@@ -46,5 +45,17 @@
       "path": "dist/arclib.esm.js",
       "limit": "10 KB"
     }
-  ]
+  ],
+  "devDependencies": {
+    "@size-limit/preset-small-lib": "^8.2.4",
+    "@tsconfig/recommended": "^1.0.2",
+    "@types/jest": "^29.5.1",
+    "@types/node": "^20.1.1",
+    "dts-cli": "^2.0.3",
+    "husky": "^8.0.3",
+    "jest-watch-typeahead": "^2.2.2",
+    "size-limit": "^8.2.4",
+    "tslib": "^2.5.0",
+    "typescript": "^5.0.4"
+  }
 }
