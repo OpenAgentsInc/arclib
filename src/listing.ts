@@ -20,7 +20,7 @@ function parseNameValuePairs(input: string): Record<string, string> {
   console.log('pairs', pairs);
   pairs.forEach((pair) => {
     const [originalName, value] = pair.split(':');
-    let name = originalName
+    let name = originalName;
     Object.entries(knownAliases).forEach((ent) => {
       if (name.match(ent[1])) {
         name = ent[0];
