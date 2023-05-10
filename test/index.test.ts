@@ -28,14 +28,14 @@ describe('parseCommand', () => {
 describe('createCommand', () => {
   test('should format a buy command correctly', () => {
     const params = {
-      action: 'buy' as 'buy',
+      action: 'buy' as const,
       minAmount: 0.1,
       maxAmount: 0.23,
       price: 29000.3,
       paymentTags: 'VPIC',
       currency: 'BTC',
       expirationDays: 2,
-    };
+    } as const;
     const expected = 'BUY 0.1-0.23 BTC @ 29000.3 [VPIC] EXP:2d';
     const result = createCommand(params);
     expect(result).toEqual(expected);
@@ -43,14 +43,14 @@ describe('createCommand', () => {
 
   test('should format a sell command correctly', () => {
     const params = {
-      action: 'SELL' as 'SELL',
+      action: 'SELL' as const,
       minAmount: 0.5,
       maxAmount: 1.0,
       currency: 'BTC',
       price: 29000,
       paymentTags: 'iw',
       additionalData: { someParam: 'value' },
-    };
+    } as const;
     const expected = 'SELL 0.5-1 BTC @ 29000 [IW] SOMEPARAM:value';
     const result = createCommand(params);
     expect(result).toEqual(expected);

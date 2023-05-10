@@ -101,8 +101,7 @@ export function createCommand({
   const amtRange =
     minAmount === maxAmount ? `${minAmount}` : `${minAmount}-${maxAmount}`;
   const tags = paymentTags ? `[${paymentTags.toUpperCase()}] ` : '';
-  const expDays = expirationDays ? `EXP:${expirationDays}d` : '';
-  let addData = { ...additionalData };
+  const addData = { ...additionalData };
   if (expirationDays) addData['exp'] = expirationDays.toString() + 'd';
   const additionalFields = Object.entries(addData)
     .filter(([key]) => key !== 'expirationDays')

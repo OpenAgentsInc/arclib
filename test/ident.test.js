@@ -22,8 +22,7 @@ describe('signEvent', () => {
         kind: 1,
         tags: [['tag1'], ['tag2']],
         content: 'test-content',
-      },
-      'test-privatekey'
+      }
     );
 
     expect(event.id).toBeTruthy();
@@ -46,8 +45,7 @@ describe('signEvent', () => {
           kind: 'faux',
           tags: [['tag1'], ['tag2']],
           content: 'test-content',
-        },
-        'test-privatekey'
+        }
       )
     ).rejects.toThrow();
   });

@@ -1,6 +1,4 @@
 import {
-  validateEvent,
-  verifySignature,
   signEvent,
   getEventHash,
   getPublicKey,
@@ -39,7 +37,6 @@ export class ArcadeIdentity {
 
   async signEvent(
     event: Omit<NostrEvent, 'id' | 'sig' | 'created_at' | 'pubkey'>,
-    privateKey: string
   ): Promise<NostrEvent> {
     const { kind, tags, content } = event;
     const created_at = Math.floor(Date.now() / 1000);
