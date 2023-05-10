@@ -22,7 +22,7 @@ jobs:
       - name: Install yarn
         run: |
           corepack enable
-          yarn 
+          yarn
 
       - name: Lint
         run: yarn lint

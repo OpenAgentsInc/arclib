@@ -1,22 +1,9 @@
-type TradeCommand = {
-  action: 'BUY' | 'SELL' | 'buy' | 'sell';
-  minAmount?: number;
-  maxAmount: number;
-  currency: string;
-  price: number;
-  paymentTags: string;
-  expirationDays?: number;
-  additionalData?: Record<string, number | string>;
-};
-
 const knownAliases = {
   expiration: /expi?r?a?t?i?o?n?/,
 };
-
-function parseNameValuePairs(input: string): Record<string, string> {
+function parseNameValuePairs(input) {
   const pairs = input.split(' ');
-  const result: Record<string, string> = {};
-
+  const result = {};
   console.log('pairs', pairs);
   pairs.forEach((pair) => {
     const [originalName, value] = pair.split(':');
@@ -28,25 +15,19 @@ function parseNameValuePairs(input: string): Record<string, string> {
     });
     result[name.trim().toLowerCase()] = value.trim();
   });
-
   return result;
 }
-
-export function parseDecimalNumber(number: string) {
+export function parseDecimalNumber(number) {
   return parseFloat(number.replace(',', ''));
 }
-
-export function parseCommand(command: string): TradeCommand {
+export function parseCommand(command) {
   const regex =
     /^(B?U?Y?|S?E?L?L?)\s+([.\d,]+)-?([.\d,]+)\s*(\w+)\s*@\s*([\d,.]+)\s*\[(\w+)\]\s*(.*)?$/i;
   const matches = command.match(regex);
-
   console.log(matches);
-
   if (!matches) {
     throw new Error('Invalid command format');
   }
-
   // first res in array is whole match
   const [
     ,
@@ -58,29 +39,23 @@ export function parseCommand(command: string): TradeCommand {
     paymentTag,
     additional,
   ] = matches;
-
-  const result: TradeCommand = {
-    action: action.toUpperCase() as 'BUY' | 'SELL',
+  const result = {
+    action: action.toUpperCase(),
     minAmount: minAmount ? parseDecimalNumber(minAmount) : undefined,
     maxAmount: parseDecimalNumber(maxAmount),
     currency,
     price: parseDecimalNumber(price),
     paymentTags: paymentTag,
   };
-
   const addData = parseNameValuePairs(additional);
-
   if (addData.exp) {
     // todo: hours, minutes, whatever
     result.expirationDays = parseInt(addData.exp.replace('d', ''), 10);
     delete addData.exp;
   }
-
   result.additionalData = addData;
-
   return result;
 }
-
 export function createCommand({
   action,
   minAmount,
@@ -90,7 +65,7 @@ export function createCommand({
   price,
   expirationDays,
   additionalData,
-}: TradeCommand): string {
+}) {
   if (action.toLowerCase() !== 'buy' && action.toLowerCase() !== 'sell') {
     throw new Error("Invalid action. Action must be either 'buy' or 'sell'");
   }
@@ -102,7 +77,7 @@ export function createCommand({
     minAmount === maxAmount ? `${minAmount}` : `${minAmount}-${maxAmount}`;
   const tags = paymentTags ? `[${paymentTags.toUpperCase()}] ` : '';
   const expDays = expirationDays ? `EXP:${expirationDays}d` : '';
-  let addData = { ...additionalData };
+  let addData = Object.assign({}, additionalData);
   if (expirationDays) addData['exp'] = expirationDays.toString() + 'd';
   const additionalFields = Object.entries(addData)
     .filter(([key]) => key !== 'expirationDays')
