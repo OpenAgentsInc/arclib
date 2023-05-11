@@ -10,8 +10,7 @@
     "target": "es6",
     "sourceMap": true,
     "moduleResolution": "node",
-    "emitDeclarationOnly": true,
     "outDir": "lib",
-    "rootDir": "."
+    "rootDir": "src"
   }
 }
