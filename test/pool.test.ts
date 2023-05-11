@@ -7,9 +7,8 @@ import { nip19, generatePrivateKey } from 'nostr-tools';
 import { NostrPool, ArcadeIdentity } from '../src';
 
 const relays = [
-  'ws://127.0.0.1:3333',
-  // 'wss://relay.nostr.band/',
-  //  'wss://nos.lol/',
+  'wss://relay.nostr.band/',
+  'wss://nos.lol/',
 ];
 
 const priv = generatePrivateKey();
