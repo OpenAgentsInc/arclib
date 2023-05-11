@@ -4,7 +4,7 @@ type TradeCommand = {
   maxAmount: number;
   currency: string;
   price: number;
-  paymentTags: string
+  paymentTags: string;
   expirationDays?: number;
   additionalData?: Record<string, number | string>;
 };
@@ -65,7 +65,7 @@ export function parseCommand(command: string): TradeCommand {
     maxAmount: parseDecimalNumber(maxAmount),
     currency,
     price: parseDecimalNumber(price),
-    paymentTags: paymentTag
+    paymentTags: paymentTag,
   };
 
   const addData = parseNameValuePairs(additional);
@@ -91,22 +91,22 @@ export function createCommand({
   expirationDays,
   additionalData,
 }: TradeCommand): string {
-  if (action.toLowerCase() !== "buy" && action.toLowerCase() !== "sell") {
+  if (action.toLowerCase() !== 'buy' && action.toLowerCase() !== 'sell') {
     throw new Error("Invalid action. Action must be either 'buy' or 'sell'");
   }
   if (!paymentTags) {
-    throw new Error("Invalid payment tags")
+    throw new Error('Invalid payment tags');
   }
-  const strPrice = price.toString()
-  const amtRange = minAmount === maxAmount ? `${minAmount}` : `${minAmount}-${maxAmount}`;
-  const tags = paymentTags ? `[${paymentTags.toUpperCase()}] ` : "";
-  const expDays = expirationDays ? `EXP:${expirationDays}d` : "";
-  let addData = {...additionalData}
-  if (expirationDays)
-    addData["exp"] = expirationDays.toString() + "d"
+  const strPrice = price.toString();
+  const amtRange =
+    minAmount === maxAmount ? `${minAmount}` : `${minAmount}-${maxAmount}`;
+  const tags = paymentTags ? `[${paymentTags.toUpperCase()}] ` : '';
+  const addData = { ...additionalData };
+  if (expirationDays) addData['exp'] = expirationDays.toString() + 'd';
   const additionalFields = Object.entries(addData)
-    .filter(([key]) => key !== "expirationDays")
+    .filter(([key]) => key !== 'expirationDays')
     .map(([key, value]) => `${key.toUpperCase()}:${value}`)
-    .join(" ").trim();
+    .join(' ')
+    .trim();
   return `${action.toUpperCase()} ${amtRange} ${currency} @ ${strPrice} ${tags}${additionalFields}`.trim();
 }
