@@ -6,10 +6,7 @@ import { nip19, generatePrivateKey } from 'nostr-tools';
 
 import { NostrPool, ArcadeIdentity } from '../src';
 
-const relays = [
-  'wss://relay.nostr.band/',
-  'wss://nos.lol/',
-];
+const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
 
 const priv = generatePrivateKey();
 const nsec = nip19.nsecEncode(priv);

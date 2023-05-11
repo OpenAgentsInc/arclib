@@ -1,5 +1,10 @@
 import { ArcadeIdentity, NostrEvent, UnsignedEvent } from './ident';
-import { SimplePool, Filter, SubscriptionOptions } from 'nostr-tools';
+import { SimplePool, Filter, SubscriptionOptions, Sub } from 'nostr-tools';
+
+// i don't know why this is necessary
+type FilterType = typeof Filter;
+type SubType = typeof Sub;
+type SubscriptionOptionsType = typeof SubscriptionOptions;
 
 // very thin wrapper using SimplePool + ArcadeIdentity
 export class NostrPool {
@@ -9,11 +14,25 @@ export class NostrPool {
   unsupportedRelays: string[] = [];
 
   private eventCallbacks: ((event: NostrEvent) => void)[] = [];
-  private pool: typeof SimplePool;
+  private pool;
+  public sub: (
+    relays: string[],
+    filters: FilterType[],
+    opts?: SubscriptionOptionsType
+  ) => SubType;
 
   constructor(ident: ArcadeIdentity) {
     this.ident = ident;
-    this.pool = new SimplePool();
+    const pool = new SimplePool();
+    this.sub = pool.sub;
+    this.pool = pool;
+  }
+
+  async list(
+    filter: FilterType[],
+    opts?: SubscriptionOptionsType
+  ): Promise<NostrEvent[]> {
+    return await this.pool.list(this.relays, filter, opts);
   }
 
   async setRelays(relays: string[]): Promise<void> {
@@ -86,7 +105,7 @@ export class NostrPool {
    * represents an event that has not yet been signed by the identity of the publisher
    * @returns An array containing an `Event` object and a subscription object to watch for publication.
    */
-  async pub(message: UnsignedEvent) {
+  async publish(message: UnsignedEvent) {
     const event: NostrEvent = await this.ident.signEvent(message);
     return [event, this.pool.publish(this.relays, event)];
   }
@@ -97,7 +116,7 @@ export class NostrPool {
    * @param {UnsignedEvent} message - The message parameter is of type UnsignedEvent
    */
   async send(message: UnsignedEvent): Promise<NostrEvent> {
-    const [event, pubs] = await this.pub(message);
+    const [event, pubs] = await this.publish(message);
     return new Promise<NostrEvent>((res) => {
       pubs.on('ok', () => {
         res(event);
