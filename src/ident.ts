@@ -42,19 +42,16 @@ export class ArcadeIdentity {
   ): Promise<NostrEvent> {
     const { kind, tags, content } = event;
     const created_at = Math.floor(Date.now() / 1000);
-    const ret: NostrEvent = {
+    const ret: any = {
       kind: kind,
       tags: tags,
       content: content,
       created_at: created_at,
-      id: '',
-      sig: '',
-      pubkey: '',
+      pubkey: this.pubKey
     };
-    ret.pubkey = this.pubKey;
     ret.id = getEventHash(ret);
     ret.sig = signEvent(ret, this.privKey);
-    return ret;
+    return ret as NostrEvent;
   }
 
   isMine(event: NostrEvent): boolean {

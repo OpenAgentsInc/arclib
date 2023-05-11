@@ -1,4 +1,4 @@
-import { nip19, generatePrivateKey, getPublicKey } from 'nostr-tools';
+import { nip19, generatePrivateKey, getPublicKey, verifySignature } from 'nostr-tools';
 import { ArcadeIdentity } from '../src/ident';
 
 function getTestKeys() {
@@ -25,6 +25,7 @@ describe('signEvent', () => {
       }
     );
 
+    expect(verifySignature(event)).toBeTruthy();
     expect(event.id).toBeTruthy();
     expect(event.kind).toBe(1);
     expect(event.pubkey).toBe(npub);

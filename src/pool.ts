@@ -17,17 +17,16 @@ export class NostrPool {
     this.pool = new SimplePool()
   }
 
-/**
- * This function sets relays based on their supported NIPs and ensures their availability in a pool.
- * @param {string[]} relays - an array of strings representing URLs of relays
- * @param {number[]} nips - `nips` is an array of numbers representing the Network Identifier Prefixes
- * (NIPs) that the relays should support. The function `setRelays` takes in an array of relay URLs and
- * checks if each relay supports all the NIPs in the `nips` array.
- */
-  async setRelays(relays: string[], nips: number[]): Promise<void> {
+
+  async setRelays(relays: string[]): Promise<void> {
+    this.relays = relays;
+    await Promise.all(relays.map(url => {this.pool.ensureRelay(url)}))
+  }
+
+  async setAndCheckRelays(relays: string[], nips: number[]): Promise<void> {
     const responses = relays.map((url)=>{
-      url = url.replace("wss:", "https:")
-      const ret : [string, Promise<Response>] = [url, fetch(url, {headers: new Headers({"Accept": "application/nostr+json"})})]
+      const nip11url = url.replace("wss:", "https:").replace("ws:", "http:")
+      const ret : [string, Promise<Response>] = [url, fetch(nip11url, {headers: new Headers({"Accept": "application/nostr+json"})})]
       return ret
     })
     
@@ -37,8 +36,7 @@ export class NostrPool {
     for (const [url, resp] of responses) {
       try {
         const info = await (await resp).json()
-        console.log(`${url} info`, info)
-        if (nips.every((nip)=>info.supportedNips.includes(nip))) {
+        if (nips.every((nip)=>info.supported_nips?.includes(nip))) {
           urls.push(url)
         } else {
           unsup.push(url)
@@ -49,11 +47,13 @@ export class NostrPool {
       }
     }
 
+    console.log("wss connecting")
     this.relays = urls;
     this.unsupportedRelays = unsup;
-    await Promise.all(relays.map(url => {this.pool.ensureRelay(url)}))
+    await Promise.all(relays.map(url => {return this.pool.ensureRelay(url)}))
   }
-/**
+
+ /**
  * Starts a subscription with a filter and optional options, and adds event callbacks to
  * the subscription.
  * @param {Filter} filter - tags, etc
@@ -63,6 +63,7 @@ export class NostrPool {
   start(filter: typeof Filter, opts?: typeof SubscriptionOptions): void {
     // todo webworker support: https://github.com/adamritter/nostr-relaypool-ts
     const s = this.pool.sub(this.relays, filter, opts)
+    s.on("event", (ev: any)=>{console.log("got event!!!!", ev)})
     this.eventCallbacks.map((cb)=>s.on("event", cb))
   }
 
@@ -83,13 +84,16 @@ export class NostrPool {
 
 /**
  * This is an asynchronous function that sends an unsigned event and waits for it to be published,
- * returning the event once it has been successfully sent.
+ * returning the event once it has been successfully sent to at least 1 relay.
  * @param {UnsignedEvent} message - The message parameter is of type UnsignedEvent
  */
   async send(message: UnsignedEvent): Promise<NostrEvent> {
     const [event, pubs] = await this.pub(message)
     return new Promise<NostrEvent>((res) => {
-      pubs.on('ok', res(event))
+      pubs.on('ok', ()=>{
+        console.log("got ok back from relay")
+        res(event)
+      })
     }) 
   }
 
