@@ -1899,19 +1899,17 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@noble/curves@npm:1.0.0, @noble/curves@npm:~1.0.0":
-  version: 1.0.0
-  resolution: "@noble/curves@npm:1.0.0"
-  dependencies:
-    "@noble/hashes": 1.3.0
-  checksum: 6bcef44d626c640dc8961819d68dd67dffb907e3b973b7c27efe0ecdd9a5c6ce62c7b9e3dfc930c66605dced7f1ec0514d191c09a2ce98d6d52b66e3315ffa79
+"@noble/hashes@npm:1.2.0, @noble/hashes@npm:~1.2.0":
+  version: 1.2.0
+  resolution: "@noble/hashes@npm:1.2.0"
+  checksum: 8ca080ce557b8f40fb2f78d3aedffd95825a415ac8e13d7ffe3643f8626a8c2d99a3e5975b555027ac24316d8b3c02a35b8358567c0c23af681e6573602aa434
   languageName: node
   linkType: hard
 
-"@noble/hashes@npm:1.3.0, @noble/hashes@npm:~1.3.0":
-  version: 1.3.0
-  resolution: "@noble/hashes@npm:1.3.0"
-  checksum: d7ddb6d7c60f1ce1f87facbbef5b724cdea536fc9e7f59ae96e0fc9de96c8f1a2ae2bdedbce10f7dcc621338dfef8533daa73c873f2b5c87fa1a4e05a95c2e2e
+"@noble/secp256k1@npm:1.7.1, @noble/secp256k1@npm:~1.7.0":
+  version: 1.7.1
+  resolution: "@noble/secp256k1@npm:1.7.1"
+  checksum: d2301f1f7690368d8409a3152450458f27e54df47e3f917292de3de82c298770890c2de7c967d237eff9c95b70af485389a9695f73eb05a43e2bd562d18b18cb
   languageName: node
   linkType: hard
 
@@ -2097,24 +2095,24 @@ __metadata:
   languageName: node
   linkType: hard
 
-"@scure/bip32@npm:1.3.0":
-  version: 1.3.0
-  resolution: "@scure/bip32@npm:1.3.0"
+"@scure/bip32@npm:1.1.4":
+  version: 1.1.4
+  resolution: "@scure/bip32@npm:1.1.4"
   dependencies:
-    "@noble/curves": ~1.0.0
-    "@noble/hashes": ~1.3.0
+    "@noble/hashes": ~1.2.0
+    "@noble/secp256k1": ~1.7.0
     "@scure/base": ~1.1.0
-  checksum: 6eae997f9bdf41fe848134898960ac48e645fa10e63d579be965ca331afd0b7c1b8ebac170770d237ab4099dafc35e5a82995384510025ccf2abe669f85e8918
+  checksum: f95378cd8d0307620d8a37e4adb0c90496f20bc6ede05c86fc8b6a17e0300a073d25f6ea27cbbbe828c9d39976e19a80857152211ef06f9c0c22ad9cd706b92d
   languageName: node
   linkType: hard
 
-"@scure/bip39@npm:1.2.0":
-  version: 1.2.0
-  resolution: "@scure/bip39@npm:1.2.0"
+"@scure/bip39@npm:1.1.1":
+  version: 1.1.1
+  resolution: "@scure/bip39@npm:1.1.1"
   dependencies:
-    "@noble/hashes": ~1.3.0
+    "@noble/hashes": ~1.2.0
     "@scure/base": ~1.1.0
-  checksum: 980d761f53e63de04a9e4db840eb13bfb1bd1b664ecb04a71824c12c190f4972fd84146f3ed89b2a8e4c6bd2c17c15f8b592b7ac029e903323b0f9e2dae6916b
+  checksum: fbb594c50696fa9c14e891d872f382e50a3f919b6c96c55ef2fb10c7102c546dafb8f099a62bd114c12a00525b595dcf7381846f383f0ddcedeaa6e210747d2f
   languageName: node
   linkType: hard
 
@@ -6962,17 +6960,18 @@ __metadata:
   languageName: node
   linkType: hard
 
-"nostr-tools@portal:/C:/Users/erik/nostr-tools::locator=arclib%40workspace%3A.":
-  version: 0.0.0-use.local
-  resolution: "nostr-tools@portal:/C:/Users/erik/nostr-tools::locator=arclib%40workspace%3A."
+"nostr-tools@npm:^1.10.1":
+  version: 1.10.1
+  resolution: "nostr-tools@npm:1.10.1"
   dependencies:
-    "@noble/curves": 1.0.0
-    "@noble/hashes": 1.3.0
+    "@noble/hashes": 1.2.0
+    "@noble/secp256k1": 1.7.1
     "@scure/base": 1.1.1
-    "@scure/bip32": 1.3.0
-    "@scure/bip39": 1.2.0
+    "@scure/bip32": 1.1.4
+    "@scure/bip39": 1.1.1
+  checksum: 414976d98e1876540c9cda19658cf629f00e3114d3e34944f2c700871f1a2006dda0f9523470cc26eb2c24ce85abbb398ead1a0e1daa2b774de3d6a4271b31ae
   languageName: node
-  linkType: soft
+  linkType: hard
 
 "npm-run-path@npm:^4.0.0, npm-run-path@npm:^4.0.1":
   version: 4.0.1
