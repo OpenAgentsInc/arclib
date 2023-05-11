@@ -6,7 +6,7 @@ export interface NostrEvent {
   id: string;
   kind: number;
   pubkey: string;
-  tags: string[];
+  tags: string[][];
   content: string;
   sig: string;
   created_at: number;
@@ -38,7 +38,7 @@ export class ArcadeIdentity {
   async signEvent(event: UnsignedEvent): Promise<NostrEvent> {
     const { kind, tags, content } = event;
     const created_at = Math.floor(Date.now() / 1000);
-    const tmp: Omit<NostrEvent, "id" | "sig"> = {
+    const tmp: Omit<NostrEvent, 'id' | 'sig'> = {
       kind: kind,
       tags: tags,
       content: content,
@@ -46,10 +46,10 @@ export class ArcadeIdentity {
       pubkey: this.pubKey,
     };
     const ret: NostrEvent = {
-        ...tmp,
-        id: getEventHash(tmp),
-        sig: signEvent(tmp, this.privKey),
-    }
+      ...tmp,
+      id: getEventHash(tmp),
+      sig: signEvent(tmp, this.privKey),
+    };
     return ret as NostrEvent;
   }
 
