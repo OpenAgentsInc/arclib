@@ -1,4 +1,9 @@
-import { nip19, generatePrivateKey, getPublicKey } from 'nostr-tools';
+import {
+  nip19,
+  generatePrivateKey,
+  getPublicKey,
+  verifySignature,
+} from 'nostr-tools';
 import { ArcadeIdentity } from '../src/ident';
 
 function getTestKeys() {
@@ -17,14 +22,13 @@ describe('signEvent', () => {
       '1btcxxx',
       'simulx@walletofsatoshi.com'
     );
-    const event = await identity.signEvent(
-      {
-        kind: 1,
-        tags: [['tag1'], ['tag2']],
-        content: 'test-content',
-      }
-    );
+    const event = await identity.signEvent({
+      kind: 1,
+      tags: [['tag1'], ['tag2']],
+      content: 'test-content',
+    });
 
+    expect(verifySignature(event)).toBeTruthy();
     expect(event.id).toBeTruthy();
     expect(event.kind).toBe(1);
     expect(event.pubkey).toBe(npub);
@@ -40,13 +44,11 @@ describe('signEvent', () => {
     const identity = new ArcadeIdentity(nsec, 'test-address', 'test-lnurl');
 
     await expect(
-      identity.signEvent(
-        {
-          kind: 'faux',
-          tags: [['tag1'], ['tag2']],
-          content: 'test-content',
-        }
-      )
+      identity.signEvent({
+        kind: 'faux',
+        tags: [['tag1'], ['tag2']],
+        content: 'test-content',
+      })
     ).rejects.toThrow();
   });
 });

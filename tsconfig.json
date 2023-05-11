@@ -6,8 +6,11 @@
     "declaration": true,
     "module": "esnext",
     "types": ["jest", "node"],
-    "lib": ["es2017"],
+    "lib": ["es2017", "dom"],
     "target": "es6",
-    "sourceMap": true
+    "sourceMap": true,
+    "moduleResolution": "node",
+    "outDir": "lib",
+    "rootDir": "src"
   }
 }

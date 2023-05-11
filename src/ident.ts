@@ -1,9 +1,4 @@
-import {
-  signEvent,
-  getEventHash,
-  getPublicKey,
-  nip19,
-} from 'nostr-tools';
+import { signEvent, getEventHash, getPublicKey, nip19 } from 'nostr-tools';
 
 import { strict as assert } from 'assert';
 
@@ -16,6 +11,11 @@ export interface NostrEvent {
   sig: string;
   created_at: number;
 }
+
+export type UnsignedEvent = Omit<
+  NostrEvent,
+  'id' | 'sig' | 'created_at' | 'pubkey'
+>;
 
 export class ArcadeIdentity {
   public privKey: string;
@@ -35,24 +35,22 @@ export class ArcadeIdentity {
     this.pubKey = getPublicKey(this.privKey);
   }
 
-  async signEvent(
-    event: Omit<NostrEvent, 'id' | 'sig' | 'created_at' | 'pubkey'>,
-  ): Promise<NostrEvent> {
+  async signEvent(event: UnsignedEvent): Promise<NostrEvent> {
     const { kind, tags, content } = event;
     const created_at = Math.floor(Date.now() / 1000);
-    const ret: NostrEvent = {
+    const tmp: Omit<NostrEvent, "id" | "sig"> = {
       kind: kind,
       tags: tags,
       content: content,
       created_at: created_at,
-      id: '',
-      sig: '',
-      pubkey: '',
+      pubkey: this.pubKey,
     };
-    ret.pubkey = this.pubKey;
-    ret.id = getEventHash(ret);
-    ret.sig = signEvent(ret, this.privKey);
-    return ret;
+    const ret: NostrEvent = {
+        ...tmp,
+        id: getEventHash(tmp),
+        sig: signEvent(tmp, this.privKey),
+    }
+    return ret as NostrEvent;
   }
 
   isMine(event: NostrEvent): boolean {
