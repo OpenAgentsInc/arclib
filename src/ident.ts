@@ -17,6 +17,8 @@ export interface NostrEvent {
   created_at: number;
 }
 
+export type UnsignedEvent = Omit<NostrEvent, 'id' | 'sig' | 'created_at' | 'pubkey'>
+
 export class ArcadeIdentity {
   public privKey: string;
   public pubKey: string;
@@ -36,7 +38,7 @@ export class ArcadeIdentity {
   }
 
   async signEvent(
-    event: Omit<NostrEvent, 'id' | 'sig' | 'created_at' | 'pubkey'>,
+    event: UnsignedEvent,
   ): Promise<NostrEvent> {
     const { kind, tags, content } = event;
     const created_at = Math.floor(Date.now() / 1000);
