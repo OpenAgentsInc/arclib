@@ -2,11 +2,14 @@
 
 require('websocket-polyfill');
 
+import NostrMini from 'nostrmini'
+
 import { nip19, generatePrivateKey } from 'nostr-tools';
 
 import { NostrPool, ArcadeIdentity } from '../src';
 
-const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
+// const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
+const relays = ['ws://127.0.0.1:3333']
 
 const priv = generatePrivateKey();
 const nsec = nip19.nsecEncode(priv);
@@ -35,6 +38,16 @@ function waiter(delay = 5000) {
 function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
+
+const srv = new NostrMini()
+
+beforeAll(()=>{
+  srv.listen(3333)
+})
+
+afterAll(async () => {
+  await srv.close()
+})
 
 describe('NostrPool', () => {
   it('can send and receive', async () => {
