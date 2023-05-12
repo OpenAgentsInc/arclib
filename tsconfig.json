@@ -6,10 +6,14 @@
     "declaration": true,
     "module": "esnext",
     "types": ["jest", "node"],
-    "lib": ["es2017", "dom"],
-    "target": "es6",
+    "lib": ["esnext", "dom"],
+    "target": "esnext",
     "sourceMap": true,
     "moduleResolution": "node",
+    "emitDecoratorMetadata": true,
+    "experimentalDecorators": true,
+    "strictPropertyInitialization": false,
+    "useDefineForClassFields": false,
     "outDir": "lib",
     "rootDir": "src"
   }
