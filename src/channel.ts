@@ -49,6 +49,7 @@ class N28Channel {
     if (await this.channelExists(meta.name)) {
       throw new Error(`Channel '${meta.name}' already exists.`);
     }
+    event: UnsignedEvnt
   }
 
   async setMeta(meta: ChannelInfo) {
