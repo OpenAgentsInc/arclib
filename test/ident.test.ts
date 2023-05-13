@@ -1,3 +1,5 @@
+/* eslint-disable @typescript-eslint/no-explicit-any */
+
 import {
   nip19,
   generatePrivateKey,
@@ -7,14 +9,14 @@ import {
 import { ArcadeIdentity } from '../src/ident';
 
 function getTestKeys() {
-  let sk = generatePrivateKey();
-  let nsec = nip19.nsecEncode(sk);
-  let npub = getPublicKey(sk);
+  const sk = generatePrivateKey();
+  const nsec = nip19.nsecEncode(sk);
+  const npub = getPublicKey(sk);
   return { nsec, npub };
 }
 
 describe('signEvent', () => {
-  let { nsec, npub } = getTestKeys();
+  const { nsec, npub } = getTestKeys();
 
   it('returns a valid ArcadeEvent', async () => {
     const identity = new ArcadeIdentity(
@@ -40,7 +42,7 @@ describe('signEvent', () => {
   });
 
   it('throws an error for invalid event kind', async () => {
-    let { nsec } = getTestKeys();
+    const { nsec } = getTestKeys();
     const identity = new ArcadeIdentity(nsec, 'test-address', 'test-lnurl');
 
     await expect(
