@@ -81,7 +81,7 @@
   "packageManager": "yarn@1.22.19",
   "dependencies": {
     "@babel/plugin-proposal-class-static-block": "^7.21.0",
-    "@nozbe/watermelondb": "^0.26.0",
+    "@nozbe/watermelondb": "<0.26.0",
     "isomorphic-unfetch": "^4.0.2",
     "nostr-tools": "^1.10.1",
     "websocket-polyfill": "^0.0.3"
