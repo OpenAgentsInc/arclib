@@ -1,6 +1,7 @@
 import { signEvent, getEventHash, getPublicKey, nip19 } from 'nostr-tools';
 
 import { strict as assert } from 'assert';
+import { generatePrivateKey } from 'nostr-tools';
 
 export interface NostrEvent {
   id: string;
@@ -23,16 +24,22 @@ export class ArcadeIdentity {
 
   constructor(
     public nsec: string,
-    public bitcoinAddress: string,
-    public lnUrl: string
+    public bitcoinAddress: string = '',
+    public lnUrl: string = ''
   ) {
     this.nsec = nsec;
     const { type, data } = nip19.decode(nsec);
-    this.privKey = data;
+    this.privKey = <string> data;
     assert(type == 'nsec');
     this.bitcoinAddress = bitcoinAddress;
     this.lnUrl = lnUrl;
     this.pubKey = getPublicKey(this.privKey);
+  }
+
+  static generate() {
+    const priv = generatePrivateKey();
+    const nsec = nip19.nsecEncode(priv);
+    return new ArcadeIdentity(nsec);
   }
 
   async signEvent(event: UnsignedEvent): Promise<NostrEvent> {
