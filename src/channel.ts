@@ -1,11 +1,12 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
+import { Kind } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
-export async function listChannels(pool: NostrPool) {
+export async function listChannels(pool: NostrPool): Promise<ChannelInfo[]> {
   // todo: this should only use the store, not go and re-query stuff, being lazy to get things done
   return (await pool.list([{ kinds: [40] }])).map((ent) => {
-    return JSON.parse(ent.content);
+    return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
   });
 }
 
@@ -13,9 +14,11 @@ interface ChannelInfo {
   name: string;
   about: string;
   picture: string;
+  id?: string;
+  author?: string;
 }
 
-class N28Channel {
+class Nip28Channel {
   private pool: NostrPool;
   private _knownChannels: ChannelInfo[] = [];
   //  private store: SqliteStore;
@@ -29,27 +32,33 @@ class N28Channel {
     throw new Error('not implemented');
   }
 
-  async knownChannels(): Promise<ChannelInfo[]> {
-    if (!this._knownChannels) {
+  async knownChannels(force?: boolean): Promise<ChannelInfo[]> {
+    if (!this._knownChannels || force) {
       this._knownChannels = await listChannels(this.pool);
     }
     return this._knownChannels;
   }
 
-  async channelExists(name: string) {
-    return (await this.knownChannels()).some((ent) => {
-      return ent.name == name;
-    });
+  async getChannel(name: string): Promise<ChannelInfo | null> {
+    const ret = (await this.knownChannels()).map((ent: ChannelInfo) => {
+      if (ent.name == name) {
+        return ent;
+      }
+    })[0];
+    return ret ?? null;
   }
-  /*  setStore(store: SqliteStore): void {
-    this.store = store;
-  }
-*/
-  async create(meta: ChannelInfo) {
-    if (await this.channelExists(meta.name)) {
-      throw new Error(`Channel '${meta.name}' already exists.`);
+
+  async create(meta: ChannelInfo): Promise<NostrEvent> {
+    if (await this.getChannel(meta.name)) {
+      throw new Error(`A channel with name '${meta.name}' already exists.`);
     }
-    event: UnsignedEvnt
+    const ev = await this.pool.send({
+      kind: 40,
+      content: JSON.stringify(meta),
+      tags: [['d', meta.name]],
+    });
+    this._knownChannels.push({ ...meta, id: ev.id, author: ev.pubkey });
+    return ev;
   }
 
   async setMeta(meta: ChannelInfo) {
@@ -60,18 +69,33 @@ class N28Channel {
     throw new Error('not implemented yet');
   }
 
-  async send(message: { content: string; replyTo?: string }): Promise<void> {
-    throw new Error('not implemented yet');
+  async send(
+    channel_id: string,
+    content: string,
+    replyTo?: string
+  ): Promise<NostrEvent> {
+    if (!channel_id) throw new Error('channel id is required');
+    const oth: string[][] = [];
+    if (replyTo) {
+      oth.push(['e', replyTo, this.pool.relays[0], 'reply']);
+    }
+    const ev = await this.pool.send({
+      kind: 42,
+      content: content,
+      tags: [['e', channel_id, this.pool.relays[0], 'root'], ...oth],
+    });
+    return ev;
+  }
+
+  async list(channel_id: string): Promise<NostrEvent[]> {
+    if (!channel_id) throw new Error('channel id is required');
+    console.log('listing stuff');
+    return this.pool.list([{ kinds: [42], '#e': [channel_id] }]);
   }
 
   async muteUser(params: { content: string; pubkey: string }): Promise<void> {
     throw new Error('not implemented yet');
   }
-
-  async join(name: string): Promise<void> {
-    // should list existing stuff in the channel, and subscribe to future stuff
-    throw new Error('not implemented yet');
-  }
 }
 
-export default N28Channel;
+export default Nip28Channel;

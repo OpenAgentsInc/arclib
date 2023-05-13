@@ -1,10 +1,5 @@
 import { ArcadeIdentity, NostrEvent, UnsignedEvent } from './ident';
-import { SimplePool, Filter, SubscriptionOptions, Sub } from 'nostr-tools';
-
-// i don't know why this is necessary
-type FilterType = typeof Filter;
-type SubType = typeof Sub;
-type SubscriptionOptionsType = typeof SubscriptionOptions;
+import { SimplePool, Filter, SubscriptionOptions, Sub, Pub } from 'nostr-tools';
 
 // very thin wrapper using SimplePool + ArcadeIdentity
 export class NostrPool {
@@ -17,9 +12,10 @@ export class NostrPool {
   private pool;
   public sub: (
     relays: string[],
-    filters: FilterType[],
-    opts?: SubscriptionOptionsType
-  ) => SubType;
+    filters: Filter[],
+    opts?: SubscriptionOptions
+  ) => Sub;
+  watch: Sub;
 
   constructor(ident: ArcadeIdentity) {
     this.ident = ident;
@@ -29,8 +25,8 @@ export class NostrPool {
   }
 
   async list(
-    filter: FilterType[],
-    opts?: SubscriptionOptionsType
+    filter: Filter[],
+    opts?: SubscriptionOptions
   ): Promise<NostrEvent[]> {
     return await this.pool.list(this.relays, filter, opts);
   }
@@ -44,13 +40,17 @@ export class NostrPool {
     );
   }
 
+  async close() {
+    await this.pool.close(this.relays)
+  }
+  
   async setAndCheckRelays(relays: string[], nips: number[]): Promise<void> {
     const responses = relays.map((url) => {
       const nip11url = url.replace('wss:', 'https:').replace('ws:', 'http:');
       const ret: [string, Promise<Response>] = [
         url,
         fetch(nip11url, {
-          headers: new Headers({ Accept: 'application/nostr+json' }),
+          headers: { Accept: 'application/nostr+json' },
         }),
       ];
       return ret;
@@ -89,10 +89,14 @@ export class NostrPool {
    * @param {SubscriptionOptions} [opts] - SubscriptionOptions
    */
 
-  start(filter: typeof Filter, opts?: typeof SubscriptionOptions): void {
+  start(filter: Filter[], opts?: SubscriptionOptions): void {
     // todo webworker support: https://github.com/adamritter/nostr-relaypool-ts
-    const s = this.pool.sub(this.relays, filter, opts);
-    this.eventCallbacks.map((cb) => s.on('event', cb));
+    this.watch = this.pool.sub(this.relays, filter, opts);
+    this.eventCallbacks.map((cb) => this.watch.on('event', cb));
+  }
+
+  stop() {
+    this.watch.unsub()
   }
 
   seenOn(id: string): string[] {
@@ -107,7 +111,7 @@ export class NostrPool {
    */
   async publish(message: UnsignedEvent) {
     const event: NostrEvent = await this.ident.signEvent(message);
-    return [event, this.pool.publish(this.relays, event)];
+    return [event, this.pool.publish(this.relays, event)] as [NostrEvent, Pub];
   }
 
   /**
