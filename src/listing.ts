@@ -1,3 +1,5 @@
+import N28Channel from "./channel";
+
 type TradeCommand = {
   action: 'BUY' | 'SELL' | 'buy' | 'sell';
   minAmount?: number;
@@ -109,4 +111,61 @@ export function createCommand({
     .join(' ')
     .trim();
   return `${action.toUpperCase()} ${amtRange} ${currency} @ ${strPrice} ${tags}${additionalFields}`.trim();
+}
+
+
+
+class ArcadeListing {
+  type: "trade" | "general";
+  action: "buy" | "sell";
+  item: string;
+  description?: string;
+  format: "currency" | "general";
+  currency: string;
+  price: number;
+  min_amt: number;
+  max_amt?: number;
+  payments: string;
+  expiration: number;
+  other: Record<string, any>;
+  listing_id?: string;
+}
+
+class ArcadeListings {
+  constructor(channel: N28Channel) {
+    // Initialize the class with the provided Nip28Channel instance.
+    // Add the necessary initialization logic here.
+  }
+
+  async getListings(): Promise<ArcadeListing[]> {
+    // Implement the logic to retrieve the listings.
+    // Return the retrieved listings as an array of ArcadeListing objects.
+    throw new Error("not implemented yet")
+  }
+
+  async postListing(listing: ArcadeListing): Promise<void> {
+    // Implement the logic to post a listing.
+    // Use the provided ArcadeListing object to create a new listing.
+  }
+
+  async deleteListing(listing_id: string): Promise<void> {
+    // Implement the logic to delete a listing.
+    // Use the provided listing_id to identify and remove the corresponding listing.
+  }
+
+  async postCurrencyTrade(listing: ArcadeListing): Promise<void> {
+    // Implement the logic to post a currency trade listing.
+    // Use the provided ArcadeListing object to create a new currency trade listing.
+  }
+
+  async getCurrencyTrades(): Promise<ArcadeListing[]> {
+    // Implement the logic to retrieve currency trade listings.
+    // Return the retrieved currency trade listings as an array of ArcadeListing objects.
+    throw new Error("not implemented yet")
+  }
+
+  async deleteCurrencyTrade(listing_id: string): Promise<void> {
+    // Implement the logic to delete a currency trade listing.
+    // Use the provided listing_id to identify and remove the corresponding currency trade listing.
+  }
 }
