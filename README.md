@@ -2,6 +2,37 @@
 
 Typescript utilities for interacting with ArcSpec trading chat channels and marketplace listings.
 
+## Overview
+
+#### ArcadeIdentity
+
+Store and pass around user identity info.
+
+#### NIP28Channel
+
+Connect to nostr chat groups
+
+#### NostrPool
+
+Talk to nostr relays
+
+#### ArcateListing
+
+Connect to a pool
+
+Manage "maker" listings in group chat channels.
+
+Get the current listing set
+
+
+#### ArcadeOffer
+
+Manage "taker" offers in private chat channels.
+
+Get the current list of offers sent to you
+
+Get the set of outstanding offers sent to others
+
 ## Commands
 
 To build and watch, use:
@@ -18,47 +49,15 @@ To run tests, use `npm test` or `yarn test`.
 
 ## Configuration
 
-Code quality is set up for you with `prettier`, `husky`, and `lint-staged`. Adjust the respective fields in `package.json` accordingly.
+Code quality uses `prettier`, `husky`, and `lint-staged`.
 
 ### Jest
 
-Jest tests are set up to run with `npm test` or `yarn test`.
-
-### Bundle Analysis
-
-[`size-limit`](https://github.com/ai/size-limit) is set up to calculate the real cost of your library with `npm run size` and visualize the bundle with `npm run analyze`.
-
-#### Setup Files
-
-This is the folder structure we set up for you:
-
-```txt
-/src
-  index.ts        # EDIT THIS
-/test
-  index.test.ts   # EDIT THIS
-.gitignore
-package.json
-README.md         # EDIT THIS
-tsconfig.json
-```
+Jest tests run with `npm test` or `yarn test`.
 
 ### Rollup
 
-DTS uses [Rollup](https://rollupjs.org) as a bundler and generates multiple rollup configs for various module formats and build settings. See [Optimizations](#optimizations) for details.
-
-### TypeScript
-
-`tsconfig.json` is set up to interpret `dom` and `esnext` types, as well as `react` for `jsx`. Adjust according to your needs.
-
-## Continuous Integration
-
-### GitHub Actions
-
-Two actions are added by default:
-
-- `main` which installs deps w/ cache, lints, tests, and builds on all pushes against a Node and OS matrix
-- `size` which comments cost comparison of your library on every pull request using [`size-limit`](https://github.com/ai/size-limit)
+DTS uses [Rollup](https://rollupjs.org) as a bundler and generates multiple rollup configs for various module formats and build settings
 
 ## Optimizations
 
@@ -73,25 +72,3 @@ if (__DEV__) {
   console.log('foo');
 }
 ```
-
-You can also choose to install and use [invariant](https://github.com/weiran-zsd/dts-cli#invariant) and [warning](https://github.com/weiran-zsd/dts-cli#warning) functions.
-
-## Module Formats
-
-CJS, ESModules, and UMD module formats are supported.
-
-The appropriate paths are configured in `package.json` and `dist/index.js` accordingly. Please report if any issues are found.
-
-## Named Exports
-
-Per Palmer Group guidelines, [always use named exports.](https://github.com/palmerhq/typescript#exports) Code split inside your React app instead of your React library.
-
-## Including Styles
-
-There are many ways to ship styles, including with CSS-in-JS. DTS has no opinion on this, configure how you like.
-
-For vanilla CSS, you can include it at the root directory and add it to the `files` section in your `package.json`, so that it can be imported separately by your users and run through their bundler's loader.
-
-## Publishing to NPM
-
-We recommend using [np](https://github.com/sindresorhus/np).

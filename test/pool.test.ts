@@ -1,19 +1,11 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 require('websocket-polyfill');
+require('isomorphic-unfetch');
 
-import NostrMini from 'nostrmini'
-
-import { nip19, generatePrivateKey } from 'nostr-tools';
+import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity } from '../src';
-
-// const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
-const relays = ['ws://127.0.0.1:3333']
-
-const priv = generatePrivateKey();
-const nsec = nip19.nsecEncode(priv);
-const ident = new ArcadeIdentity(nsec, '', '');
 
 function defer() {
   const deferred: any = {};
@@ -39,15 +31,18 @@ function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-const srv = new NostrMini()
+const ident = ArcadeIdentity.generate();
+const srv = new NostrMini();
+const relays: string[] = []
 
-beforeAll(()=>{
-  srv.listen(3333)
-})
+beforeAll(() => {
+  const port: number = srv.listen(0).address().port;
+  relays.push(`ws://127.0.0.1:${port}`)
+});
 
 afterAll(async () => {
-  await srv.close()
-})
+  await srv.close();
+});
 
 describe('NostrPool', () => {
   it('can send and receive', async () => {
@@ -61,9 +56,10 @@ describe('NostrPool', () => {
     // todo: investigate this, probably need to write/run our own test relay
     const event = await pool.send({ content: 'yo', tags: [], kind: 1 });
     console.log('sent event, waiting for reply', event);
-    await sleep(1000);
     console.log('req started');
-    await pool.start([{ authors: [ident.pubKey] }]);
+    const sub = await pool.start([{ authors: [ident.pubKey] }]);
     await wait;
-  }, 10000);
+    await pool.stop();
+    await pool.close();
+  });
 });
