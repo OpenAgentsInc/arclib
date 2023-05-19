@@ -146,45 +146,62 @@ export class ArcadeListings {
   }
 }
 
-function convertToSeconds(input: string): number | undefined {
-  const durationRegex = /(\d+)\s*(s(?:econds?)?|m(?:in(?:utes?)?)?|h(?:ours?)?|d(?:ays?)?|w(?:eeks?)?|mon(?:ths?)?)/i;
+export function convertToSeconds(input: string): number | undefined {
+  const durationRegex = /(\d+)\s*(s(?:econds?)?|m(?:in(?:utes?)?)?|h(?:ours?)?|d(?:ays?)?|w(?:eeks?)?|mon(?:ths?)?)/ig;
   const matches = input.match(durationRegex);
 
   if (!matches) {
     return undefined; // Invalid input format
   }
 
-  const quantity = parseInt(matches[1]);
-  const unit = matches[2].toLowerCase();
+  let totalSeconds = 0;
 
-  switch (unit) {
-    case 's':
-    case 'seconds':
-      return quantity;
-    case 'm':
-    case 'min':
-    case 'minutes':
-      return quantity * 60;
-    case 'h':
-    case 'hours':
-      return quantity * 60 * 60;
-    case 'd':
-    case 'day':
-    case 'days':
-      return quantity * 24 * 60 * 60;
-    case 'w':
-    case 'week':
-    case 'weeks':
-      return quantity * 7 * 24 * 60 * 60;
-    case 'mon':
-    case 'month':
-    case 'months':
-      return quantity * 30 * 24 * 60 * 60; // Assuming 30 days per month
-    default:
-      return undefined; // Invalid unit
+  for (const match of matches) {
+    const unitRegex = /(\d+)\s*(s(?:econds?)?|m(?:in(?:utes?)?)?|h(?:ours?)?|d(?:ays?)?|w(?:eeks?)?|mon(?:ths?)?)/i;
+    const unitMatches = match.match(unitRegex);
+
+    if (unitMatches) {
+      const quantity = parseInt(unitMatches[1]);
+      const unit = unitMatches[2].toLowerCase();
+
+      switch (unit) {
+        case 's':
+        case 'seconds':
+          totalSeconds += quantity;
+          break;
+        case 'm':
+        case 'min':
+        case 'minutes':
+          totalSeconds += quantity * 60;
+          break;
+        case 'h':
+        case 'hour':
+        case 'hours':
+          totalSeconds += quantity * 60 * 60;
+          break;
+        case 'd':
+        case 'day':
+        case 'days':
+          totalSeconds += quantity * 24 * 60 * 60;
+          break;
+        case 'w':
+        case 'week':
+        case 'weeks':
+          totalSeconds += quantity * 7 * 24 * 60 * 60;
+          break;
+        case 'mon':
+        case 'month':
+        case 'months':
+          totalSeconds += quantity * 30 * 24 * 60 * 60; // Assuming 30 days per month
+          break;
+        default:
+          return undefined; // Invalid unit
+      }
+    }
   }
-}
 
+  return totalSeconds;
+}
 
 export function formatDuration(duration: number): string {
   if (duration < 0) {
