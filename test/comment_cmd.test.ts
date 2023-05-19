@@ -1,4 +1,4 @@
-import { parseCommand, createCommand } from '../src/listing';
+import { parseCommand, createCommand } from '../src';
 // import {describe, it, expect} from "@jest/globals"
 
 describe('parseCommand', () => {
