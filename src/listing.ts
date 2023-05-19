@@ -12,6 +12,7 @@ interface ArcadeListingInput {
   min_amt?: number;
   payments: string[];
   expiration: string;
+  geohash?: string;
 }
 
 interface ArcadeListing {
@@ -58,6 +59,9 @@ export class ArcadeListings {
     if (!secs) {
       throw new Error(`invalid expiration ${listing.expiration}`)
     }
+    // For privacy, we limit the precision of the geohash to 5 digits. A 5-digit geohash represents an area roughly the size of a large airport.
+    // An empty geohash string is valid; it means "somewhere on the planet".
+    listing.geohash = (listing.geohash ?? "").substring(0,5)
     const final: ArcadeListing = {
       type: listing.type,
       action: listing.action,
@@ -69,7 +73,10 @@ export class ArcadeListings {
       expiration: secs,
       payments: listing.payments
     }
-    const tags = [["a", JSON.stringify(final)]]
+    const tags = [
+      ["a", JSON.stringify(final)],
+      ["g", listing.geohash],
+    ]
     const content = listing.content ?? ""
     delete listing.content
     return await this.conn.send(this.channel_id, content, undefined, tags)
