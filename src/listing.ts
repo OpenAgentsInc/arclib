@@ -1,4 +1,5 @@
-import N28Channel from "./channel";
+import Nip28Channel from "./channel";
+import { NostrEvent } from "./ident";
 
 type TradeCommand = {
   action: 'BUY' | 'SELL' | 'buy' | 'sell';
@@ -113,59 +114,121 @@ export function createCommand({
   return `${action.toUpperCase()} ${amtRange} ${currency} @ ${strPrice} ${tags}${additionalFields}`.trim();
 }
 
-
-
-class ArcadeListing {
-  type: "trade" | "general";
+interface ArcadeListingInput {
+  type: "v1";
   action: "buy" | "sell";
   item: string;
-  description?: string;
-  format: "currency" | "general";
-  currency: string;
+  content?: string
   price: number;
-  min_amt: number;
-  max_amt?: number;
-  payments: string;
-  expiration: number;
-  other: Record<string, any>;
-  listing_id?: string;
+  currency?: string;
+  amt: number;
+  min_amt?: number;
+  payments: string[];
+  expiration: string;
 }
 
-class ArcadeListings {
-  constructor(channel: N28Channel) {
-    // Initialize the class with the provided Nip28Channel instance.
-    // Add the necessary initialization logic here.
+interface ArcadeListing {
+  type: "v1";
+  action: "buy" | "sell";
+  item: string;
+  content: string
+  price: number;
+  currency: string;
+  amt: number;
+  min_amt?: number;
+  payments: string[];
+  expiration: number;
+  id?: string;
+  tags?: string[];
+}
+
+export class ArcadeListings {
+  channel_id: string;
+  conn: Nip28Channel;
+  constructor(conn: Nip28Channel, id: string) {
+    this.conn = conn
+    this.channel_id = id
   }
 
-  async getListings(): Promise<ArcadeListing[]> {
-    // Implement the logic to retrieve the listings.
-    // Return the retrieved listings as an array of ArcadeListing objects.
-    throw new Error("not implemented yet")
+  async list(): Promise<ArcadeListing[]> {
+    const ents = (await this.conn.list(this.channel_id)).map((el: NostrEvent)=>{
+        const tag = el.tags.find((el)=>{
+          return el[0] == "a"
+        })
+        if (!tag) {
+          return null
+        }
+        const info: ArcadeListing = JSON.parse(tag[1])
+        info.id = el.id
+        info.content = el.content
+        return info
+    })
+    return ents.filter((el)=>{return el != null}) as ArcadeListing[]
   }
 
-  async postListing(listing: ArcadeListing): Promise<void> {
-    // Implement the logic to post a listing.
-    // Use the provided ArcadeListing object to create a new listing.
+  async post(listing: ArcadeListingInput): Promise<NostrEvent> {
+    const secs = convertToSeconds(listing.expiration)
+    if (!secs) {
+      throw new Error(`invalid expiration ${listing.expiration}`)
+    }
+    const final: ArcadeListing = {
+      type: listing.type,
+      action: listing.action,
+      amt: listing.amt,
+      price: listing.price,
+      item: listing.item,
+      content: listing.content ? listing.content : "",
+      currency: listing.currency ? listing.currency : "",
+      expiration: secs,
+      payments: listing.payments
+    }
+    const tags = [["a", JSON.stringify(final)]]
+    const content = listing.content ?? ""
+    delete listing.content
+    return await this.conn.send(this.channel_id, content, undefined, tags)
   }
 
-  async deleteListing(listing_id: string): Promise<void> {
+  async delete(listing_id: string): Promise<void> {
     // Implement the logic to delete a listing.
     // Use the provided listing_id to identify and remove the corresponding listing.
   }
+}
 
-  async postCurrencyTrade(listing: ArcadeListing): Promise<void> {
-    // Implement the logic to post a currency trade listing.
-    // Use the provided ArcadeListing object to create a new currency trade listing.
+function convertToSeconds(input: string): number | undefined {
+  const durationRegex = /(\d+)\s*(s(?:econds?)?|m(?:in(?:utes?)?)?|h(?:ours?)?|d(?:ays?)?|w(?:eeks?)?|mon(?:ths?)?)/i;
+  const matches = input.match(durationRegex);
+
+  if (!matches) {
+    return undefined; // Invalid input format
   }
 
-  async getCurrencyTrades(): Promise<ArcadeListing[]> {
-    // Implement the logic to retrieve currency trade listings.
-    // Return the retrieved currency trade listings as an array of ArcadeListing objects.
-    throw new Error("not implemented yet")
-  }
+  const quantity = parseInt(matches[1]);
+  const unit = matches[2].toLowerCase();
 
-  async deleteCurrencyTrade(listing_id: string): Promise<void> {
-    // Implement the logic to delete a currency trade listing.
-    // Use the provided listing_id to identify and remove the corresponding currency trade listing.
+  switch (unit) {
+    case 's':
+    case 'seconds':
+      return quantity;
+    case 'm':
+    case 'min':
+    case 'minutes':
+      return quantity * 60;
+    case 'h':
+    case 'hours':
+      return quantity * 60 * 60;
+    case 'd':
+    case 'day':
+    case 'days':
+      return quantity * 24 * 60 * 60;
+    case 'w':
+    case 'week':
+    case 'weeks':
+      return quantity * 7 * 24 * 60 * 60;
+    case 'mon':
+    case 'month':
+    case 'months':
+      return quantity * 30 * 24 * 60 * 60; // Assuming 30 days per month
+    default:
+      return undefined; // Invalid unit
   }
 }
