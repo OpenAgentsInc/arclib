@@ -85,7 +85,7 @@ export class ArcadeListings {
     if (!secs) {
       throw new Error(`invalid expiration ${listing.expiration}`)
     }
-    // For privacy, we limit the precision of the geohash to 5 digits. A 5-digit geohash represents an area roughly the size of a large airport.
+    // For privacy, we limit the precision of the geohash to 5 digits. A 5-digit geohash represents an area roughly the size of a large airport. Example with DFW: https://geohash.softeng.co/9vfgp
     // An empty geohash string is valid; it means "somewhere on the planet".
     listing.geohash = (listing.geohash ?? "").substring(0,5)
     const final: ArcadeListing = {
