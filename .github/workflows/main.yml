@@ -30,7 +30,7 @@ jobs:
       - name: Run Test and Report Coverage
         uses: ArtiomTr/jest-coverage-report-action@v2
         with:
-          test-script: yarn jest
+          test-script: yarn test
           skip-step: install
 
       - name: Build
