@@ -97,7 +97,7 @@ export function connectDb(): Database {
     migrations: schemaMigrations({
       migrations: [],
     }),
-    onSetUpError: (error): void => {},
+    onSetUpError: (error): void => {console.log("setup error", error)},
   });
 
   const db = new Database({
