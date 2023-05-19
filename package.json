@@ -38,6 +38,14 @@
     "node": ">=12",
     "yarn": ">=1"
   },
+  "coverageThreshold": {
+      "global": {
+        "branches": 45,
+        "functions": 84,
+        "lines": 84,
+        "statements": 84
+      }
+  },
   "size-limit": [
     {
       "path": "dist/arclib.cjs.production.min.js",
