@@ -90,7 +90,6 @@ class Nip28Channel {
 
   async list(channel_id: string, filter: Filter = {}): Promise<NostrEvent[]> {
     if (!channel_id) throw new Error('channel id is required');
-    console.log('listing stuff');
     return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }]);
   }
 

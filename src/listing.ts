@@ -27,6 +27,7 @@ interface ArcadeListing {
   payments: string[];       // list of payment methods
   expiration: number;       // expiraton seconds
   id?: string;
+  pubkey?: string;
   created_at?: number;       // epoch create time
   tags?: string[];
 }
@@ -51,6 +52,7 @@ interface ArcadeOffer {
   payment: string;
   expiration: number;
   id?: string;
+  pubkey?: string;
   created_at?: number;       // epoch create time
   tags?: string[];
 }
@@ -64,6 +66,7 @@ export class ArcadeListings {
   }
 
   async list(): Promise<ArcadeListing[]> {
+    const now_secs = Date.now()/1000
     const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"]})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{
           return el[0] == "data"
@@ -72,12 +75,15 @@ export class ArcadeListings {
           return null
         }
         const info: ArcadeListing = JSON.parse(tag[1])
-        info.id = el.id
-        info.content = el.content
-        info.created_at = el.created_at
+        this.augmentListing(info, el);
+        if (this.expired(now_secs, info)) return null;
         return info
     })
     return ents.filter((el)=>{return el != null}) as ArcadeListing[]
+  }
+  expired(now_secs: number, info: ArcadeListing | ArcadeOffer) {
+      const expiry = (info.created_at||0) + info.expiration
+      return (now_secs > expiry)
   }
 
   async post(listing: ArcadeListingInput): Promise<ArcadeListing> {
@@ -103,8 +109,7 @@ export class ArcadeListings {
     const content = listing.content ?? ""
     delete listing.content
     const ev = await this.conn.send(this.channel_id, content, undefined, tags)
-    final.id = ev.id
-    final.created_at = ev.created_at
+    this.augmentListing(final, ev);
     return final
   }
 
@@ -134,6 +139,7 @@ export class ArcadeListings {
   }
 
   async listOffers(listing_id: string): Promise<ArcadeOffer[]> {
+      const now_secs = Date.now() / 1000
       const ents = (await this.conn.list(this.channel_id, {"#x": ["offer"]})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{return el[0] == "data"})
         const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == listing_id})
@@ -141,12 +147,18 @@ export class ArcadeListings {
           return null
         }
         const info: ArcadeOffer = JSON.parse(tag[1])
-        info.id = el.id
-        info.content = el.content
-        info.created_at = el.created_at
+        this.augmentListing(info, el);
+        if (this.expired(now_secs, info)) return null;
         return info
     })
     return ents.filter((el)=>{return el != null}) as ArcadeOffer[]
+  }
+
+  private augmentListing(info: ArcadeOffer | ArcadeListing, el: NostrEvent) {
+    info.id = el.id;
+    info.content = el.content;
+    info.created_at = el.created_at;
+    info.pubkey = el.pubkey;
   }
 }
 
