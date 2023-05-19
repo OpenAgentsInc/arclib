@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Kind } from 'nostr-tools';
+import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
 export async function listChannels(pool: NostrPool): Promise<ChannelInfo[]> {
@@ -72,7 +72,8 @@ class Nip28Channel {
   async send(
     channel_id: string,
     content: string,
-    replyTo?: string
+    replyTo?: string,
+    tags: string[][] = [],
   ): Promise<NostrEvent> {
     if (!channel_id) throw new Error('channel id is required');
     const oth: string[][] = [];
@@ -82,15 +83,14 @@ class Nip28Channel {
     const ev = await this.pool.send({
       kind: 42,
       content: content,
-      tags: [['e', channel_id, this.pool.relays[0], 'root'], ...oth],
+      tags: [['e', channel_id, this.pool.relays[0], 'root'], ...oth, ...tags],
     });
     return ev;
   }
 
-  async list(channel_id: string): Promise<NostrEvent[]> {
+  async list(channel_id: string, filter: Filter = {}): Promise<NostrEvent[]> {
     if (!channel_id) throw new Error('channel id is required');
-    console.log('listing stuff');
-    return this.pool.list([{ kinds: [42], '#e': [channel_id] }]);
+    return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }]);
   }
 
   async muteUser(params: { content: string; pubkey: string }): Promise<void> {

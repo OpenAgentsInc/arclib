@@ -6,30 +6,7 @@ require('isomorphic-unfetch');
 import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity } from '../src';
-
-function defer() {
-  const deferred: any = {};
-  deferred.promise = new Promise<any>((resolve, reject) => {
-    deferred.resolve = resolve;
-    deferred.reject = reject;
-  });
-  return deferred;
-}
-
-function waiter(delay = 5000) {
-  const deferred = defer();
-  setTimeout(() => {
-    deferred.reject('timed out');
-  }, delay);
-  return [deferred.resolve, deferred.promise] as [
-    (res: any) => any,
-    Promise<any>
-  ];
-}
-
-function sleep(ms: number) {
-  return new Promise((resolve) => setTimeout(resolve, ms));
-}
+import { waiter } from './waiter';
 
 const ident = ArcadeIdentity.generate();
 const srv = new NostrMini();
@@ -57,9 +34,10 @@ describe('NostrPool', () => {
     const event = await pool.send({ content: 'yo', tags: [], kind: 1 });
     console.log('sent event, waiting for reply', event);
     console.log('req started');
-    const sub = await pool.start([{ authors: [ident.pubKey] }]);
+    pool.start([{ authors: [ident.pubKey] }]);
     await wait;
-    await pool.stop();
+    pool.stop();
+    console.log("stopping pool")
     await pool.close();
   });
 });
