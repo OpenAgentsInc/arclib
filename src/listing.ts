@@ -26,6 +26,7 @@ interface ArcadeListing {
   min_amt?: number;         // min amount will accept (if not present... same as max)
   payments: string[];       // list of payment methods
   expiration: number;       // expiraton seconds
+  geohash?: string;         // optional geohash
   id?: string;
   pubkey?: string;
   created_at?: number;       // epoch create time
@@ -41,6 +42,7 @@ interface ArcadeOfferInput {
   amt: number;          // amount offered (should be >= min_amt <= amt)
   payment: string;     // payment type selection
   expiration: string;   // offer should be ignored after this time
+  geohash?: string;
 }
 
 interface ArcadeOffer {
@@ -55,6 +57,7 @@ interface ArcadeOffer {
   pubkey?: string;
   created_at?: number;       // epoch create time
   tags?: string[];
+  geohash?: string;
 }
 
 export class ArcadeListings {
@@ -93,7 +96,6 @@ export class ArcadeListings {
     }
     // For privacy, we limit the precision of the geohash to 5 digits. A 5-digit geohash represents an area roughly the size of a large airport. Example with DFW: https://geohash.softeng.co/9vfgp
     // An empty geohash string is valid; it means "somewhere on the planet".
-    listing.geohash = (listing.geohash ?? "").substring(0,5)
     const final: ArcadeListing = {
       type: listing.type,
       action: listing.action,
@@ -105,7 +107,9 @@ export class ArcadeListings {
       expiration: secs,
       payments: listing.payments
     }
-    const tags = [["x", "listing"], ["data", JSON.stringify(final)], ["g", listing.geohash]]
+    const tags = [["x", "listing"], ["data", JSON.stringify(final)]]
+    if (listing.geohash)
+      tags.push(["g", listing.geohash.substring(0, 5)])
     const content = listing.content ?? ""
     delete listing.content
     const ev = await this.conn.send(this.channel_id, content, undefined, tags)
@@ -133,6 +137,8 @@ export class ArcadeListings {
       payment: offer.payment
     }
     const tags = [["x", "offer"], ["data", JSON.stringify(final)]]
+    if (offer.geohash)
+      tags.push(["g", offer.geohash.substring(0, 5)])
     const content = offer.content ?? ""
     delete offer.content
     return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
@@ -159,6 +165,9 @@ export class ArcadeListings {
     info.content = el.content;
     info.created_at = el.created_at;
     info.pubkey = el.pubkey;
+    const geo = el.tags.find((el)=>{return el[0] == "g"})
+    if (geo)
+      info.geohash = geo[1]
   }
 }
 
