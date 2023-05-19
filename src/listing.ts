@@ -63,9 +63,9 @@ export class ArcadeListings {
   }
 
   async list(): Promise<ArcadeListing[]> {
-    const ents = (await this.conn.list(this.channel_id)).map((el: NostrEvent)=>{
+    const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"]})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{
-          return el[0] == "a"
+          return el[0] == "data"
         })
         if (!tag) {
           return null
@@ -95,7 +95,7 @@ export class ArcadeListings {
       expiration: secs,
       payments: listing.payments
     }
-    const tags = [["a", JSON.stringify(final)]]
+    const tags = [["x", "listing"], ["data", JSON.stringify(final)]]
     const content = listing.content ?? ""
     delete listing.content
     const ev = await this.conn.send(this.channel_id, content, undefined, tags)
@@ -123,15 +123,15 @@ export class ArcadeListings {
       expiration: secs,
       payment: offer.payment
     }
-    const tags = [["a", JSON.stringify(final)]]
+    const tags = [["x", "offer"], ["data", JSON.stringify(final)]]
     const content = offer.content ?? ""
     delete offer.content
     return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
   }
 
   async listOffers(listing_id: string): Promise<ArcadeOffer[]> {
-      const ents = (await this.conn.list(this.channel_id)).map((el: NostrEvent)=>{
-        const tag = el.tags.find((el)=>{return el[0] == "a"})
+      const ents = (await this.conn.list(this.channel_id, {"#x": ["offer"]})).map((el: NostrEvent)=>{
+        const tag = el.tags.find((el)=>{return el[0] == "data"})
         const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == listing_id})
         if (!tag || !repl) {
           return null
