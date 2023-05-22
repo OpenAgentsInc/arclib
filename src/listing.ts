@@ -126,11 +126,6 @@ export class ArcadeListings {
     return final
   }
 
-  async delete(listing_id: string): Promise<void> {
-    // Implement the logic to delete a listing.
-    // Use the provided listing_id to identify and remove the corresponding listing.
-  }
-
   async postOffer(offer: ArcadeOfferInput): Promise<NostrEvent> {
     const secs = convertToSeconds(offer.expiration)
     if (!secs) {
