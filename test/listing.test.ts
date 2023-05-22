@@ -74,5 +74,17 @@ test('create listing', async () => {
     assert(offer2.expiration == 7 * 86400)
     assert(offer2.created_at)
     assert(offer2.geohash == "12345")
+
+
+    const action = await listings.postAction({
+      type: "a1",
+      action: "accept",
+      offer_id: offer2.id,
+      content: "ok, lets meet",
+    })
+    
+    const action2 = (await listings.listActions(offer2.id))[0]
+    assert(action2.id == action.id)
+    assert(action2.action == "accept")
     pool.close()
 });
