@@ -1,6 +1,16 @@
 import Nip28Channel from "./channel";
 import { NostrEvent } from "./ident";
 
+
+interface ArcadeEvent {
+  content?: string;
+  id?: string;
+  pubkey?: string;
+  created_at?: number;       // epoch create time
+  tags?: string[];
+  geohash?: string;
+}
+
 interface ArcadeListingInput {
   type: "l1";
   action: "buy" | "sell";
@@ -15,22 +25,16 @@ interface ArcadeListingInput {
   geohash?: string;
 }
 
-interface ArcadeListing {
+interface ArcadeListing extends ArcadeEvent {
   type: "l1";
   action: "buy" | "sell";   
   item: string;             // bitcoin, or anything else
-  content: string           // friendly message
   price: number;            //
   currency: string;         // espected currency for trade
   amt: number;              // max amount for sale
   min_amt?: number;         // min amount will accept (if not present... same as max)
   payments: string[];       // list of payment methods
   expiration: number;       // expiraton seconds
-  geohash?: string;         // optional geohash
-  id?: string;
-  pubkey?: string;
-  created_at?: number;       // epoch create time
-  tags?: string[];
 }
 
 interface ArcadeOfferInput {
@@ -45,19 +49,25 @@ interface ArcadeOfferInput {
   geohash?: string;
 }
 
-interface ArcadeOffer {
+interface ArcadeOffer extends ArcadeEvent {
   type: "o1";
-  content: string
   price: number;
   currency: string;
   amt: number;
   payment: string;
   expiration: number;
-  id?: string;
-  pubkey?: string;
-  created_at?: number;       // epoch create time
-  tags?: string[];
-  geohash?: string;
+}
+
+interface ArcadeActionInput {
+  type: "a1";
+  action: "accept" | "finalize" | "comment"
+  offer_id: string;   // source listing id
+  content?: string      // nice message with any details
+}
+
+interface ArcadeAction extends ArcadeEvent {
+  type: "a1";
+  action: "accept" | "finalize" | "comment"
 }
 
 export class ArcadeListings {
@@ -102,7 +112,6 @@ export class ArcadeListings {
       amt: listing.amt,
       price: listing.price,
       item: listing.item,
-      content: listing.content ? listing.content : "",
       currency: listing.currency ? listing.currency : "",
       expiration: secs,
       payments: listing.payments
@@ -117,11 +126,6 @@ export class ArcadeListings {
     return final
   }
 
-  async delete(listing_id: string): Promise<void> {
-    // Implement the logic to delete a listing.
-    // Use the provided listing_id to identify and remove the corresponding listing.
-  }
-
   async postOffer(offer: ArcadeOfferInput): Promise<NostrEvent> {
     const secs = convertToSeconds(offer.expiration)
     if (!secs) {
@@ -131,7 +135,6 @@ export class ArcadeListings {
       type: offer.type,
       amt: offer.amt,
       price: offer.price,
-      content: offer.content ? offer.content : "",
       currency: offer.currency ? offer.currency : "",
       expiration: secs,
       payment: offer.payment
@@ -142,6 +145,21 @@ export class ArcadeListings {
     const content = offer.content ?? ""
     delete offer.content
     return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
+  }
+
+  async postAction(act: ArcadeActionInput): Promise<NostrEvent> {
+    // actions are "accept" and "finalize" and "comment"
+    // only 1 accept should be posted
+    // only 1 finalize should be posted
+    // as many "comment" can be posted
+    const final: ArcadeAction = {
+      type: act.type,
+      action: act.action,
+    }
+    const tags = [["x", "action"], ["data", JSON.stringify(final)]]
+    const content = act.content ?? ""
+    delete act.content
+    return await this.conn.send(this.channel_id, content, act.offer_id, tags)
   }
 
   async listOffers(listing_id: string): Promise<ArcadeOffer[]> {
@@ -160,7 +178,22 @@ export class ArcadeListings {
     return ents.filter((el)=>{return el != null}) as ArcadeOffer[]
   }
 
-  private augmentListing(info: ArcadeOffer | ArcadeListing, el: NostrEvent) {
+  async listActions(offer_id: string): Promise<ArcadeAction[]> {
+      const now_secs = Date.now() / 1000
+      const ents = (await this.conn.list(this.channel_id, {"#x": ["action"]})).map((el: NostrEvent)=>{
+        const tag = el.tags.find((el)=>{return el[0] == "data"})
+        const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == offer_id})
+        if (!tag || !repl) {
+          return null
+        }
+        const info: ArcadeAction = JSON.parse(tag[1])
+        this.augmentListing(info, el);
+        return info
+    })
+    return ents.filter((el)=>{return el != null}) as ArcadeAction[]
+  }
+
+  private augmentListing(info: ArcadeEvent, el: NostrEvent) {
     info.id = el.id;
     info.content = el.content;
     info.created_at = el.created_at;
