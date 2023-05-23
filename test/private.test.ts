@@ -33,4 +33,6 @@ test('dm:simple', async () => {
     const dms2 = new Nip04Manager(pool2);
     await dms1.send(ident2.pubKey, "yo")
     assert((await dms2.list())[0].content == "yo")
-}, 100000);
+    pool1.close()
+    pool2.close()
+});

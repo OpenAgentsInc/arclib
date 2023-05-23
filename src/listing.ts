@@ -1,5 +1,6 @@
 import Nip28Channel from "./channel";
 import { NostrEvent } from "./ident";
+import Nip04Manager from "./private";
 
 
 interface ArcadeEvent {
@@ -39,13 +40,14 @@ interface ArcadeListing extends ArcadeEvent {
 
 interface ArcadeOfferInput {
   type: "o1";
-  listing_id: string;   // source listing id
-  content?: string      // nice message with any details
-  price: number;        // price offered (if different from listing)
-  currency?: string;    // currency offered (if different from listing)
-  amt: number;          // amount offered (should be >= min_amt <= amt)
-  payment: string;     // payment type selection
-  expiration: string;   // offer should be ignored after this time
+  listing_id: string;     // source listing id
+  listing_pubkey?: string; // source listing pubkey
+  content?: string        // nice message with any details
+  price: number;          // price offered (if different from listing)
+  currency?: string;      // currency offered (if different from listing)
+  amt: number;            // amount offered (should be >= min_amt <= amt)
+  payment: string;        // payment type selection
+  expiration: string;     // offer should be ignored after this time
   geohash?: string;
 }
 
@@ -73,8 +75,10 @@ interface ArcadeAction extends ArcadeEvent {
 export class ArcadeListings {
   channel_id: string;
   conn: Nip28Channel;
+  private: Nip04Manager;
   constructor(conn: Nip28Channel, id: string) {
     this.conn = conn
+    this.private = new Nip04Manager(conn.pool)
     this.channel_id = id
   }
 
@@ -144,7 +148,11 @@ export class ArcadeListings {
       tags.push(["g", offer.geohash.substring(0, 5)])
     const content = offer.content ?? ""
     delete offer.content
-    return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
+    if (offer.listing_pubkey) {
+      return await this.private.send(offer.listing_pubkey, content, offer.listing_id, tags)
+    } else {
+      return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
+    }
   }
 
   async postAction(act: ArcadeActionInput): Promise<NostrEvent> {
