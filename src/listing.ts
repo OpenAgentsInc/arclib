@@ -1,3 +1,4 @@
+import { Filter } from "nostr-tools";
 import Nip28Channel from "./channel";
 import { NostrEvent } from "./ident";
 import Nip04Manager from "./private";
@@ -64,6 +65,7 @@ interface ArcadeActionInput {
   type: "a1";
   action: "accept" | "finalize" | "comment"
   offer_id: string;   // source listing id
+  offer_pubkey?: string; // offer public key, to make a private accept
   content?: string      // nice message with any details
 }
 
@@ -82,9 +84,9 @@ export class ArcadeListings {
     this.channel_id = id
   }
 
-  async list(): Promise<ArcadeListing[]> {
+  async list(filter: Filter): Promise<ArcadeListing[]> {
     const now_secs = Date.now()/1000
-    const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"]})).map((el: NostrEvent)=>{
+    const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"], ...filter})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{
           return el[0] == "data"
         })
@@ -167,12 +169,18 @@ export class ArcadeListings {
     const tags = [["x", "action"], ["data", JSON.stringify(final)]]
     const content = act.content ?? ""
     delete act.content
-    return await this.conn.send(this.channel_id, content, act.offer_id, tags)
+    if (act.offer_pubkey) {
+      return await this.private.send(act.offer_pubkey, content, act.offer_id, tags)
+    } else {
+      return await this.conn.send(this.channel_id, content, act.offer_id, tags)
+    }
   }
 
-  async listOffers(listing_id: string): Promise<ArcadeOffer[]> {
+  async listOffers(listing_id: string, filter: Filter = {}): Promise<ArcadeOffer[]> {
       const now_secs = Date.now() / 1000
-      const ents = (await this.conn.list(this.channel_id, {"#x": ["offer"]})).map((el: NostrEvent)=>{
+      const pubs = (await this.conn.list(this.channel_id, {"#x": ["offer"], ...filter}))
+      const privs = (await this.private.list({"#x": ["offer"], ...filter}))
+      const ents = (pubs.concat(privs)).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{return el[0] == "data"})
         const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == listing_id})
         if (!tag || !repl) {
@@ -186,9 +194,10 @@ export class ArcadeListings {
     return ents.filter((el)=>{return el != null}) as ArcadeOffer[]
   }
 
-  async listActions(offer_id: string): Promise<ArcadeAction[]> {
-      const now_secs = Date.now() / 1000
-      const ents = (await this.conn.list(this.channel_id, {"#x": ["action"]})).map((el: NostrEvent)=>{
+  async listActions(offer_id: string, filter: Filter = {}): Promise<ArcadeAction[]> {
+      const pubs = (await this.conn.list(this.channel_id, {"#x": ["action"], ...filter}))
+      const privs = (await this.private.list({"#x": ["action"], ...filter}))
+      const ents = (pubs.concat(privs)).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{return el[0] == "data"})
         const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == offer_id})
         if (!tag || !repl) {
