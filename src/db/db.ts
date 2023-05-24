@@ -15,9 +15,6 @@ import { AppSchema, TableName } from './schema';
 import { NostrEvent } from '../ident';
 import { Filter } from 'nostr-tools';
 
-// eslint-disable-next-line @typescript-eslint/no-var-requires
-const encodeQuery = require('@nozbe/watermelondb/adapters/sqlite/encodeQuery')
-
 export class DbEvent extends Model {
   static table = TableName.EVENTS;
 
