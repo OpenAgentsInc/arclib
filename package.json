@@ -39,12 +39,12 @@
     "yarn": ">=1"
   },
   "coverageThreshold": {
-      "global": {
-        "branches": 45,
-        "functions": 84,
-        "lines": 84,
-        "statements": 84
-      }
+    "global": {
+      "branches": 45,
+      "functions": 84,
+      "lines": 84,
+      "statements": 84
+    }
   },
   "size-limit": [
     {
