@@ -86,7 +86,7 @@ test('create listing', async () => {
     assert(offer2.expiration == 7 * 86400)
     assert(offer2.created_at)
     assert(offer2.geohash == "12345")
-
+    assert(offer2.public == true)
 
     const action = await listings.postAction({
       type: "a1",
@@ -98,6 +98,7 @@ test('create listing', async () => {
     const action2 = (await listings.listActions(offer2.id))[0]
     assert(action2.id == action.id)
     assert(action2.action == "accept")
+    assert(action2.public == true)
     pool.close()
 });
 
@@ -125,11 +126,12 @@ test("listing: create private", async () => {
     assert(offer2.expiration == 7 * 86400)
     assert(offer2.created_at)
     assert(offer2.geohash == "12345")
+    assert(offer2.public == false)
 
     const action = await listings.postAction({
       type: "a1",
       action: "accept",
-      offer_pubkey: offer2.pubkey,
+      reply_pubkey: offer2.pubkey,
       offer_id: offer2.id,
       content: "ok, lets meet",
     })
@@ -137,5 +139,6 @@ test("listing: create private", async () => {
     const action2 = (await listings.listActions(offer2.id, {ids: [action.id]}))[0]
     assert(action2.id == action.id)
     assert(action2.action == "accept")
+    assert(action2.public == false)
     pool.close()
   })

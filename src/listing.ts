@@ -11,6 +11,7 @@ interface ArcadeEvent {
   created_at?: number;       // epoch create time
   tags?: string[];
   geohash?: string;
+  public?: boolean;
 }
 
 interface ArcadeListingInput {
@@ -65,7 +66,7 @@ interface ArcadeActionInput {
   type: "a1";
   action: "accept" | "finalize" | "comment"
   offer_id: string;   // source listing id
-  offer_pubkey?: string; // offer public key, to make a private accept
+  reply_pubkey?: string; // offer public key, to make a private accept
   content?: string      // nice message with any details
 }
 
@@ -169,8 +170,8 @@ export class ArcadeListings {
     const tags = [["x", "action"], ["data", JSON.stringify(final)]]
     const content = act.content ?? ""
     delete act.content
-    if (act.offer_pubkey) {
-      return await this.private.send(act.offer_pubkey, content, act.offer_id, tags)
+    if (act.reply_pubkey) {
+      return await this.private.send(act.reply_pubkey, content, act.offer_id, tags)
     } else {
       return await this.conn.send(this.channel_id, content, act.offer_id, tags)
     }
@@ -218,6 +219,7 @@ export class ArcadeListings {
     const geo = el.tags.find((el)=>{return el[0] == "g"})
     if (geo)
       info.geohash = geo[1]
+    info.public = el.kind != 4
   }
 }
 
