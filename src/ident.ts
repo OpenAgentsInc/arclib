@@ -29,7 +29,7 @@ export class ArcadeIdentity {
   ) {
     this.nsec = nsec;
     const { type, data } = nip19.decode(nsec);
-    this.privKey = <string> data;
+    this.privKey = <string>data;
     assert(type == 'nsec');
     this.bitcoinAddress = bitcoinAddress;
     this.lnUrl = lnUrl;
