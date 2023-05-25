@@ -85,7 +85,11 @@ export class ArcadeListings {
     this.channel_id = id
   }
 
-  async list(filter: Filter): Promise<ArcadeListing[]> {
+  sub(callback: (ev: NostrEvent)=>void, filter: Filter={}) {
+    this.conn.sub(this.channel_id, callback, filter)
+  }
+
+  async list(filter: Filter={}): Promise<ArcadeListing[]> {
     const now_secs = Date.now()/1000
     const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"], ...filter})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{
@@ -101,6 +105,7 @@ export class ArcadeListings {
     })
     return ents.filter((el)=>{return el != null}) as ArcadeListing[]
   }
+
   expired(now_secs: number, info: ArcadeListing | ArcadeOffer) {
       const expiry = (info.created_at||0) + info.expiration
       return (now_secs > expiry)

@@ -98,6 +98,11 @@ class Nip28Channel {
     return ev;
   }
 
+  async sub(channel_id: string, callback: (ev: NostrEvent)=>void, filter: Filter={}) {
+    if (!channel_id) throw new Error('channel id is required');
+    return this.pool.sub([{ kinds: [42], '#e': [channel_id], ...filter }], callback);
+  }
+
   async list(channel_id: string, filter: Filter = {}): Promise<NostrEvent[]> {
     if (!channel_id) throw new Error('channel id is required');
     return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }]);
