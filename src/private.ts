@@ -44,6 +44,11 @@ class Nip04Manager {
     return ev;
   }
 
+  sub(callback: (ev: NostrEvent)=>void, filter: Filter = {}) {
+    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }]
+    this.pool.sub(filter_ex, callback)
+  }
+
   async list(filter: Filter = {}): Promise<NostrEvent[]> {
     const lst = await this.pool.list([{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }])
 

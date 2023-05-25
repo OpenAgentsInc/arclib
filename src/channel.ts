@@ -73,7 +73,7 @@ class Nip28Channel {
     channel_id: string,
     content: string,
     replyTo?: string,
-    tags: string[][] = [],
+    tags: string[][] = []
   ): Promise<NostrEvent> {
     if (!channel_id) throw new Error('channel id is required');
     const oth: string[][] = [];
@@ -88,17 +88,19 @@ class Nip28Channel {
     return ev;
   }
 
-  async delete(
-    event_id: string,
-    tags: string[][] = [],
-  ): Promise<NostrEvent> {
+  async delete(event_id: string, tags: string[][] = []): Promise<NostrEvent> {
     if (!event_id) throw new Error('event id is required');
     const ev = await this.pool.send({
       kind: 5,
-      content: "",
+      content: '',
       tags: [['e', event_id]],
     });
     return ev;
+  }
+
+  async sub(channel_id: string, callback: (ev: NostrEvent)=>void, filter: Filter={}) {
+    if (!channel_id) throw new Error('channel id is required');
+    return this.pool.sub([{ kinds: [42], '#e': [channel_id], ...filter }], callback);
   }
 
   async list(channel_id: string, filter: Filter = {}): Promise<NostrEvent[]> {

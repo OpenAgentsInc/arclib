@@ -85,7 +85,11 @@ export class ArcadeListings {
     this.channel_id = id
   }
 
-  async list(filter: Filter): Promise<ArcadeListing[]> {
+  sub(callback: (ev: NostrEvent)=>void, filter: Filter={}) {
+    this.conn.sub(this.channel_id, callback, filter)
+  }
+
+  async list(filter: Filter={}): Promise<ArcadeListing[]> {
     const now_secs = Date.now()/1000
     const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"], ...filter})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{
@@ -101,6 +105,7 @@ export class ArcadeListings {
     })
     return ents.filter((el)=>{return el != null}) as ArcadeListing[]
   }
+
   expired(now_secs: number, info: ArcadeListing | ArcadeOffer) {
       const expiry = (info.created_at||0) + info.expiration
       return (now_secs > expiry)
@@ -177,6 +182,12 @@ export class ArcadeListings {
     }
   }
 
+  subOffers(callback: (ev: NostrEvent) => void, filter: Filter = {}) {
+    // notify on any offer for this whole channel
+    this.conn.sub(this.channel_id, callback, {"#x": ["offer"], ...filter}) 
+    this.private.sub(callback, {"#x": ["offer"], ...filter})
+  }
+
   async listOffers(listing_id: string, filter: Filter = {}): Promise<ArcadeOffer[]> {
       const now_secs = Date.now() / 1000
       const pubs = (await this.conn.list(this.channel_id, {"#x": ["offer"], ...filter}))
@@ -193,6 +204,12 @@ export class ArcadeListings {
         return info
     })
     return ents.filter((el)=>{return el != null}) as ArcadeOffer[]
+  }
+
+  subActions(callback: (ev: NostrEvent) => void, filter: Filter = {}) {
+    // notify on any offer for this whole channel
+    this.conn.sub(this.channel_id, callback, {"#x": ["action"], ...filter}) 
+    this.private.sub(callback, {"#x": ["action"], ...filter})
   }
 
   async listActions(offer_id: string, filter: Filter = {}): Promise<ArcadeAction[]> {

@@ -1,14 +1,5 @@
-import {
-  Collection,
-  Database,
-  Model,
-  Q,
-} from '@nozbe/watermelondb';
-import {
-  field,
-  text,
-  json,
-} from '@nozbe/watermelondb/decorators';
+import { Collection, Database, Model, Q } from '@nozbe/watermelondb';
+import { field, text, json } from '@nozbe/watermelondb/decorators';
 import { schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { AppSchema, TableName } from './schema';
@@ -23,7 +14,10 @@ export class DbEvent extends Model {
   @text('sig') sig: string;
   @field('kind') kind: number;
   @text('pubkey') pubkey: string;
-  @json('tags', (rawTags):string[][]=>{return Array.isArray(rawTags) ? rawTags : []}) tags: string[][];
+  @json('tags', (rawTags): string[][] => {
+    return Array.isArray(rawTags) ? rawTags : [];
+  })
+  tags: string[][];
   @field('created_at') created_at: number;
   @field('verified') verified: boolean;
   @field('e1') e1: string;
@@ -58,38 +52,50 @@ export class DbEvent extends Model {
   }
 
   asEvent(): NostrEvent {
-    return this
+    return {
+      id: this.event_id,
+      kind: this.kind,
+      pubkey: this.pubkey,
+      sig: this.sig,
+      content: this.content,
+      tags: this.tags,
+      created_at: this.created_at,
+    };
   }
 }
 
 export class ArcadeDb extends Database {
   async list(filter: Filter[]): Promise<NostrEvent[]> {
     const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
-    const or: Q.Where[] = []
-    filter.forEach((f)=>{
-        const and: Q.Where[] = []
-        f.authors?.map((el: string)=>{
-          and.push(Q.where("pubkey", Q.eq(el)))
-        })
-        f.ids?.map((el: string)=>{
-          and.push(Q.where("event_id", Q.eq(el)))
-        })
-        f.kinds?.map((el: number)=>{
-          and.push(Q.where("kind", Q.eq(el)))
-        })
-        f['#e']?.map((el: string)=>{
-          and.push(Q.where("e1", Q.eq(el)))
-        })
-        f['#p']?.map((el: string)=>{
-          and.push(Q.where("p1", Q.eq(el)))
-        })
-        or.push(Q.and(...and))
-      })
-    const records = await posts.query(Q.or(...or))
+    const or: Q.Where[] = [];
+    filter.forEach((f) => {
+      const and: Q.Where[] = [];
+      f.authors?.map((el: string) => {
+        and.push(Q.where('pubkey', Q.eq(el)));
+      });
+      f.ids?.map((el: string) => {
+        and.push(Q.where('event_id', Q.eq(el)));
+      });
+      f.kinds?.map((el: number) => {
+        and.push(Q.where('kind', Q.eq(el)));
+      });
+      f['#e']?.map((el: string) => {
+        and.push(Q.where('e1', Q.eq(el)));
+      });
+      f['#p']?.map((el: string) => {
+        and.push(Q.where('p1', Q.eq(el)));
+      });
+      or.push(Q.and(...and));
+    });
+    const records = await posts.query(Q.or(...or));
     const els = records.map((ev: DbEvent) => {
-        return ev.asEvent()
-    })
-    return els 
+      return ev.asEvent();
+    });
+    return els;
+  }
+
+  async saveEvent(ev: NostrEvent) {
+    return await DbEvent.fromEvent(this, ev);
   }
 }
 
@@ -99,7 +105,9 @@ export function connectDb(): ArcadeDb {
     migrations: schemaMigrations({
       migrations: [],
     }),
-    onSetUpError: (error): void => {console.log("setup error", error)},
+    onSetUpError: (error): void => {
+      console.log('setup error', error);
+    },
   });
 
   const db = new ArcadeDb({
