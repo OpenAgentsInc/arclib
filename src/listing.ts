@@ -1,5 +1,7 @@
+import { Filter } from "nostr-tools";
 import Nip28Channel from "./channel";
 import { NostrEvent } from "./ident";
+import Nip04Manager from "./private";
 
 
 interface ArcadeEvent {
@@ -9,6 +11,7 @@ interface ArcadeEvent {
   created_at?: number;       // epoch create time
   tags?: string[];
   geohash?: string;
+  public?: boolean;
 }
 
 interface ArcadeListingInput {
@@ -39,13 +42,14 @@ interface ArcadeListing extends ArcadeEvent {
 
 interface ArcadeOfferInput {
   type: "o1";
-  listing_id: string;   // source listing id
-  content?: string      // nice message with any details
-  price: number;        // price offered (if different from listing)
-  currency?: string;    // currency offered (if different from listing)
-  amt: number;          // amount offered (should be >= min_amt <= amt)
-  payment: string;     // payment type selection
-  expiration: string;   // offer should be ignored after this time
+  listing_id: string;     // source listing id
+  listing_pubkey?: string; // source listing pubkey
+  content?: string        // nice message with any details
+  price: number;          // price offered (if different from listing)
+  currency?: string;      // currency offered (if different from listing)
+  amt: number;            // amount offered (should be >= min_amt <= amt)
+  payment: string;        // payment type selection
+  expiration: string;     // offer should be ignored after this time
   geohash?: string;
 }
 
@@ -62,6 +66,7 @@ interface ArcadeActionInput {
   type: "a1";
   action: "accept" | "finalize" | "comment"
   offer_id: string;   // source listing id
+  reply_pubkey?: string; // offer public key, to make a private accept
   content?: string      // nice message with any details
 }
 
@@ -73,14 +78,16 @@ interface ArcadeAction extends ArcadeEvent {
 export class ArcadeListings {
   channel_id: string;
   conn: Nip28Channel;
+  private: Nip04Manager;
   constructor(conn: Nip28Channel, id: string) {
     this.conn = conn
+    this.private = new Nip04Manager(conn.pool)
     this.channel_id = id
   }
 
-  async list(): Promise<ArcadeListing[]> {
+  async list(filter: Filter): Promise<ArcadeListing[]> {
     const now_secs = Date.now()/1000
-    const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"]})).map((el: NostrEvent)=>{
+    const ents = (await this.conn.list(this.channel_id, {"#x": ["listing"], ...filter})).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{
           return el[0] == "data"
         })
@@ -144,7 +151,11 @@ export class ArcadeListings {
       tags.push(["g", offer.geohash.substring(0, 5)])
     const content = offer.content ?? ""
     delete offer.content
-    return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
+    if (offer.listing_pubkey) {
+      return await this.private.send(offer.listing_pubkey, content, offer.listing_id, tags)
+    } else {
+      return await this.conn.send(this.channel_id, content, offer.listing_id, tags)
+    }
   }
 
   async postAction(act: ArcadeActionInput): Promise<NostrEvent> {
@@ -159,12 +170,18 @@ export class ArcadeListings {
     const tags = [["x", "action"], ["data", JSON.stringify(final)]]
     const content = act.content ?? ""
     delete act.content
-    return await this.conn.send(this.channel_id, content, act.offer_id, tags)
+    if (act.reply_pubkey) {
+      return await this.private.send(act.reply_pubkey, content, act.offer_id, tags)
+    } else {
+      return await this.conn.send(this.channel_id, content, act.offer_id, tags)
+    }
   }
 
-  async listOffers(listing_id: string): Promise<ArcadeOffer[]> {
+  async listOffers(listing_id: string, filter: Filter = {}): Promise<ArcadeOffer[]> {
       const now_secs = Date.now() / 1000
-      const ents = (await this.conn.list(this.channel_id, {"#x": ["offer"]})).map((el: NostrEvent)=>{
+      const pubs = (await this.conn.list(this.channel_id, {"#x": ["offer"], ...filter}))
+      const privs = (await this.private.list({"#x": ["offer"], ...filter}))
+      const ents = (pubs.concat(privs)).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{return el[0] == "data"})
         const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == listing_id})
         if (!tag || !repl) {
@@ -178,9 +195,10 @@ export class ArcadeListings {
     return ents.filter((el)=>{return el != null}) as ArcadeOffer[]
   }
 
-  async listActions(offer_id: string): Promise<ArcadeAction[]> {
-      const now_secs = Date.now() / 1000
-      const ents = (await this.conn.list(this.channel_id, {"#x": ["action"]})).map((el: NostrEvent)=>{
+  async listActions(offer_id: string, filter: Filter = {}): Promise<ArcadeAction[]> {
+      const pubs = (await this.conn.list(this.channel_id, {"#x": ["action"], ...filter}))
+      const privs = (await this.private.list({"#x": ["action"], ...filter}))
+      const ents = (pubs.concat(privs)).map((el: NostrEvent)=>{
         const tag = el.tags.find((el)=>{return el[0] == "data"})
         const repl = el.tags.find((el)=>{return el[0] == "e" && el[1] == offer_id})
         if (!tag || !repl) {
@@ -201,6 +219,7 @@ export class ArcadeListings {
     const geo = el.tags.find((el)=>{return el[0] == "g"})
     if (geo)
       info.geohash = geo[1]
+    info.public = el.kind != 4
   }
 }
 
