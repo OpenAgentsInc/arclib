@@ -19,7 +19,7 @@ interface ChannelInfo {
 }
 
 class Nip28Channel {
-  private pool: NostrPool;
+  public pool: NostrPool;
   private _knownChannels: ChannelInfo[] = [];
   //  private store: SqliteStore;
 
