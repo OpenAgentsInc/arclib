@@ -40,10 +40,8 @@ class Nip28Channel {
   }
 
   async getChannel(name: string): Promise<ChannelInfo | null> {
-    const ret = (await this.knownChannels()).map((ent: ChannelInfo) => {
-      if (ent.name == name) {
-        return ent;
-      }
+    const ret = (await this.knownChannels()).filter((ent: ChannelInfo) => {
+      return ent.name==name;
     })[0];
     return ret ?? null;
   }
