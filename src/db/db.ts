@@ -33,11 +33,11 @@ export class DbEvent extends Model {
   ): Promise<DbEvent> {
     const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
     return mutex.runExclusive(async () => {
+      const have = await posts.query(Q.where('event_id', event.id)).fetch();
+      if (have.length) {
+        return have[0] as DbEvent;
+      }
       return await db.write(async () => {
-        const have = await posts.query(Q.where('event_id', event.id)).fetch();
-        if (have.length) {
-          return have[0] as DbEvent;
-        }
         return await posts.create((post: DbEvent) => {
           post.event_id = event.id;
           post.content = event.content;
@@ -88,9 +88,9 @@ export class ArcadeDb extends Database {
     const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
     const or: Q.Where = this.filterToQuery(filter);
     const records = await posts.query(or).fetch();
-    return records.reduce((prev, cur)=>{
-        return (!prev || cur.created_at > prev.created_at) ? cur : prev
-    }).created_at
+    return records.length ? records.reduce((prev, cur)=>{
+        return (cur && (cur.created_at > prev.created_at)) ? cur : prev
+    }).created_at : 0
   }
 
   private filterToQuery(filter: Filter[]) {

@@ -139,16 +139,16 @@ describe('NostrPool', () => {
     if (!pool1.db) throw Error;
     await pool1.setRelays(relays);
 
-    await pool1.send({ content: '1', tags: [['p', 'uu77']], kind: 1 });
-    await pool1.send({ content: '2', tags: [['p', 'uu77']], kind: 1 });
-    await pool1.send({ content: '3', tags: [['p', 'uu77']], kind: 1 });
+    await pool1.send({ content: '1', tags: [['p', '5566']], kind: 1 });
+    await pool1.send({ content: '2', tags: [['p', '5566']], kind: 1 });
+    await pool1.send({ content: '3', tags: [['p', '5566']], kind: 1 });
     await pool1.list([{kinds: [1]}]);
     
-    await sleep(1)
+    await sleep(2)
     
     const pool2 = new NostrPool(ident, db);
 
-    await pool1.send({ content: '4', tags: [['p', 'uu77']], kind: 1 });
+    await pool1.send({ content: '4', tags: [['p', '5566']], kind: 1 });
     
     const ret = await pool2.list([{kinds: [1]}]);
 
