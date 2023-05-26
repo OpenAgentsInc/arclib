@@ -131,4 +131,29 @@ describe('NostrPool', () => {
     pool1.close()
     pool2.close()
   });
+
+
+  it('queries for new stuff only', async () => {
+    const db = connectDb();
+    const pool1 = new NostrPool(ident, db);
+    if (!pool1.db) throw Error;
+    await pool1.setRelays(relays);
+
+    await pool1.send({ content: '1', tags: [['p', 'uu77']], kind: 1 });
+    await pool1.send({ content: '2', tags: [['p', 'uu77']], kind: 1 });
+    await pool1.send({ content: '3', tags: [['p', 'uu77']], kind: 1 });
+    await pool1.list([{kinds: [1]}]);
+    
+    await sleep(1)
+    
+    const pool2 = new NostrPool(ident, db);
+
+    await pool1.send({ content: '4', tags: [['p', 'uu77']], kind: 1 });
+    
+    const ret = await pool2.list([{kinds: [1]}]);
+
+    expect(ret.length).toBe(4)
+    pool1.close()
+  });
+
 });

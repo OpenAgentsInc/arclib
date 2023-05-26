@@ -35,6 +35,7 @@ export class NostrPool {
     opts?: SubscriptionOptions
   ): Promise<NostrEvent[]> {
     if (this.db) {
+      const since = await this.db.latest(filters);
       // subscribe if needed, wait for eose
       // save to db && return from db
       await new Promise<void>((res, rej) => {
@@ -46,7 +47,8 @@ export class NostrPool {
             },
             async () => {
               res();
-            }
+            },
+            since
           );
         } catch (e) {
           rej(e);
@@ -135,7 +137,8 @@ export class NostrPool {
   sub(
     filters: Filter[],
     callback: (event: NostrEvent) => void,
-    eose?: () => Promise<void>
+    eose?: () => Promise<void>,
+    since?: number 
   ): void {
     // subcribe to filters
     // maintain filter-subscription map
@@ -150,7 +153,14 @@ export class NostrPool {
     });
     const now = Date.now();
     if (new_filters.length) {
-      const sub = this.pool.sub(this.relays, new_filters);
+      let sub_filters = new_filters
+      if (since) {
+        // caller has stuff in the db for this filter, so just ask for more recent
+        sub_filters = sub_filters.map((f)=>{
+          return {...f, since}
+        })
+      }
+      const sub = this.pool.sub(this.relays, sub_filters);
       new_filters.forEach((f) => {
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
@@ -180,7 +190,9 @@ export class NostrPool {
   }
 
   stop() {
-    this.watch.unsub();
+    if (this.watch) {
+        this.watch.unsub();
+    }
   }
 
   seenOn(id: string): string[] {
