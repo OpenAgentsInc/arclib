@@ -30,28 +30,28 @@ export class DbEvent extends Model {
   ): Promise<DbEvent> {
     const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
     return await db.write(async () => {
-      let have = await posts.query(Q.where('event_id', event.id)).fetchCount()
-      
-      if (!have) {
-          return await posts.create((post: DbEvent) => {
-            post.event_id = event.id;
-            post.content = event.content;
-            post.sig = event.sig;
-            post.kind = event.kind;
-            post.tags = event.tags;
-            post.pubkey = event.pubkey;
-            post.created_at = event.created_at;
-            post.verified = verified;
-            event.tags.forEach((tag) => {
-              if (tag[0] == 'e' && !post.e1) {
-                post.e1 = tag[1];
-              }
-              if (tag[0] == 'p' && !post.p1) {
-                post.p1 = tag[1];
-              }
-            });
-          });
+      const have = await posts.query(Q.where('event_id', event.id)).fetch();
+      if (have.length) {
+        return have[0] as DbEvent;
       }
+      return await posts.create((post: DbEvent) => {
+        post.event_id = event.id;
+        post.content = event.content;
+        post.sig = event.sig;
+        post.kind = event.kind;
+        post.tags = event.tags;
+        post.pubkey = event.pubkey;
+        post.created_at = event.created_at;
+        post.verified = verified;
+        event.tags.forEach((tag) => {
+          if (tag[0] == 'e' && !post.e1) {
+            post.e1 = tag[1];
+          }
+          if (tag[0] == 'p' && !post.p1) {
+            post.p1 = tag[1];
+          }
+        });
+      });
     });
   }
 
