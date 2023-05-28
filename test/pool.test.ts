@@ -142,7 +142,8 @@ describe('NostrPool', () => {
     await pool1.send({ content: '1', tags: [['p', '5566']], kind: 1 });
     await pool1.send({ content: '2', tags: [['p', '5566']], kind: 1 });
     await pool1.send({ content: '3', tags: [['p', '5566']], kind: 1 });
-    await pool1.list([{kinds: [1]}]);
+
+    await pool1.list([{kinds: [1], "#p": ['5566']}]);
     
     await sleep(2)
     
@@ -150,7 +151,7 @@ describe('NostrPool', () => {
 
     await pool1.send({ content: '4', tags: [['p', '5566']], kind: 1 });
     
-    const ret = await pool2.list([{kinds: [1]}]);
+    const ret = await pool2.list([{kinds: [1], "#p": ['5566']}]);
 
     expect(ret.length).toBe(4)
     pool1.close()

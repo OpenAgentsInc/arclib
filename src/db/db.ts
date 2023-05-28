@@ -28,12 +28,14 @@ export class DbEvent extends Model {
     event: NostrEvent,
     verified = false
   ): Promise<DbEvent> {
+
     const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
     const have = await posts.query(Q.where('event_id', event.id)).fetch();
-    if (have.length || recent_ids.has(event.id)) {
+ 
+    if (have.length) {
       return have[0] as DbEvent;
     }
-    recent_ids.add(event.id)
+
     return await db.write(async () => {
       return await posts.create((post: DbEvent) => {
         post.event_id = event.id;
@@ -68,8 +70,6 @@ export class DbEvent extends Model {
     };
   }
 }
-
-const recent_ids = new Set()
 
 export class ArcadeDb extends Database {
 
