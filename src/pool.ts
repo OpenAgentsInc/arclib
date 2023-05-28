@@ -42,8 +42,7 @@ export class NostrPool {
             async (ev) => {
               await this.db?.saveEvent(ev);
             },
-            async () => {
-            },
+            undefined,
             since
           );
       } else {
