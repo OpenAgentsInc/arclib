@@ -45,7 +45,7 @@ class Nip04Manager {
   }
 
   sub(callback: (ev: NostrEvent)=>void, filter: Filter = {}) {
-    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }]
+    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {author: this.pool.ident.pubKey}]
     this.pool.sub(filter_ex, callback)
   }
 
