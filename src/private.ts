@@ -45,12 +45,13 @@ class Nip04Manager {
   }
 
   sub(callback: (ev: NostrEvent)=>void, filter: Filter = {}) {
-    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {author: this.pool.ident.pubKey}]
+    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {kinds: [4], author: this.pool.ident.pubKey, ...filter}]
     this.pool.sub(filter_ex, callback)
   }
 
   async list(filter: Filter = {}, db_only=false): Promise<NostrEvent[]> {
-    const lst = await this.pool.list([{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }], db_only)
+    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {kinds: [4], author: this.pool.ident.pubKey, ...filter}]
+    const lst = await this.pool.list(filter_ex, db_only)
 
     const mapped = await Promise.all(lst.map(async (ev: NostrEvent)=>{
         try {
