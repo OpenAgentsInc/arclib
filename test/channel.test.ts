@@ -12,11 +12,11 @@ import Nip28Channel from '../src/channel';
 const ident = ArcadeIdentity.generate();
 
 const srv = new NostrMini();
-const relays: string[] = []
+const relays: string[] = [];
 
 beforeAll(() => {
   const port: number = srv.listen(0).address().port;
-  relays.push(`ws://127.0.0.1:${port}`)
+  relays.push(`ws://127.0.0.1:${port}`);
 });
 
 afterAll(async () => {

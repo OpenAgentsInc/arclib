@@ -40,10 +40,8 @@ class Nip28Channel {
   }
 
   async getChannel(name: string): Promise<ChannelInfo | null> {
-    const ret = (await this.knownChannels()).map((ent: ChannelInfo) => {
-      if (ent.name == name) {
-        return ent;
-      }
+    const ret = (await this.knownChannels()).filter((ent: ChannelInfo) => {
+      return ent.name==name;
     })[0];
     return ret ?? null;
   }
@@ -73,7 +71,7 @@ class Nip28Channel {
     channel_id: string,
     content: string,
     replyTo?: string,
-    tags: string[][] = [],
+    tags: string[][] = []
   ): Promise<NostrEvent> {
     if (!channel_id) throw new Error('channel id is required');
     const oth: string[][] = [];
@@ -88,22 +86,24 @@ class Nip28Channel {
     return ev;
   }
 
-  async delete(
-    event_id: string,
-    tags: string[][] = [],
-  ): Promise<NostrEvent> {
+  async delete(event_id: string, tags: string[][] = []): Promise<NostrEvent> {
     if (!event_id) throw new Error('event id is required');
     const ev = await this.pool.send({
       kind: 5,
-      content: "",
+      content: '',
       tags: [['e', event_id]],
     });
     return ev;
   }
 
-  async list(channel_id: string, filter: Filter = {}): Promise<NostrEvent[]> {
+  async sub(channel_id: string, callback: (ev: NostrEvent)=>void, filter: Filter={}) {
     if (!channel_id) throw new Error('channel id is required');
-    return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }]);
+    return this.pool.sub([{ kinds: [42], '#e': [channel_id], ...filter }], callback);
+  }
+
+  async list(channel_id: string, filter: Filter = {}, db_only=false): Promise<NostrEvent[]> {
+    if (!channel_id) throw new Error('channel id is required');
+    return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }], db_only);
   }
 
   async muteUser(params: { content: string; pubkey: string }): Promise<void> {
