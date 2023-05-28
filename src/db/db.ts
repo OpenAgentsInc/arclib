@@ -5,9 +5,6 @@ import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { AppSchema, TableName } from './schema';
 import { NostrEvent } from '../ident';
 import { Filter } from 'nostr-tools';
-import { Mutex } from 'async-mutex'
-
-const mutex = new Mutex()
 
 export class DbEvent extends Model {
   static table = TableName.EVENTS;
@@ -32,29 +29,28 @@ export class DbEvent extends Model {
     verified = false
   ): Promise<DbEvent> {
     const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
-    return mutex.runExclusive(async () => {
-      const have = await posts.query(Q.where('event_id', event.id)).fetch();
-      if (have.length) {
-        return have[0] as DbEvent;
-      }
-      return await db.write(async () => {
-        return await posts.create((post: DbEvent) => {
-          post.event_id = event.id;
-          post.content = event.content;
-          post.sig = event.sig;
-          post.kind = event.kind;
-          post.tags = event.tags;
-          post.pubkey = event.pubkey;
-          post.created_at = event.created_at;
-          post.verified = verified;
-          event.tags.forEach((tag) => {
-            if (tag[0] == 'e' && !post.e1) {
-              post.e1 = tag[1];
-            }
-            if (tag[0] == 'p' && !post.p1) {
-              post.p1 = tag[1];
-            }
-          });
+    const have = await posts.query(Q.where('event_id', event.id)).fetch();
+    if (have.length || recent_ids.has(event.id)) {
+      return have[0] as DbEvent;
+    }
+    recent_ids.add(event.id)
+    return await db.write(async () => {
+      return await posts.create((post: DbEvent) => {
+        post.event_id = event.id;
+        post.content = event.content;
+        post.sig = event.sig;
+        post.kind = event.kind;
+        post.tags = event.tags;
+        post.pubkey = event.pubkey;
+        post.created_at = event.created_at;
+        post.verified = verified;
+        event.tags.forEach((tag) => {
+          if (tag[0] == 'e' && !post.e1) {
+            post.e1 = tag[1];
+          }
+          if (tag[0] == 'p' && !post.p1) {
+            post.p1 = tag[1];
+          }
         });
       });
     });
@@ -73,7 +69,10 @@ export class DbEvent extends Model {
   }
 }
 
+const recent_ids = new Set()
+
 export class ArcadeDb extends Database {
+
   async list(filter: Filter[]): Promise<NostrEvent[]> {
     const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
     const or: Q.Where = this.filterToQuery(filter);
