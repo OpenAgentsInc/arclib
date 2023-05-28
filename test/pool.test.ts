@@ -103,8 +103,8 @@ describe('NostrPool', () => {
 
     // old sub gets the event, we're still monitoring it!
     await wait;
-    
-    pool1.close()
+
+    pool1.close();
   });
 
   it('db keeps track even after list is done', async () => {
@@ -123,15 +123,14 @@ describe('NostrPool', () => {
     // sending pool2...
     await pool2.send({ content: 'yo', tags: [['p', 'uu77']], kind: 1 });
 
-    await wait_for(async ()=>{
+    await wait_for(async () => {
       if (!pool1.db) throw Error;
-      return (await pool1.db.list([{'#p': ['uu77']}])).length != 0
-    })
+      return (await pool1.db.list([{ '#p': ['uu77'] }])).length != 0;
+    });
 
-    pool1.close()
-    pool2.close()
+    pool1.close();
+    pool2.close();
   });
-
 
   it('queries for new stuff only', async () => {
     const db = connectDb();
@@ -143,18 +142,17 @@ describe('NostrPool', () => {
     await pool1.send({ content: '2', tags: [['p', '5566']], kind: 1 });
     await pool1.send({ content: '3', tags: [['p', '5566']], kind: 1 });
 
-    await pool1.list([{kinds: [1], "#p": ['5566']}]);
-    
-    await sleep(2)
-    
+    await pool1.list([{ kinds: [1], '#p': ['5566'] }]);
+
+    await sleep(2);
+
     const pool2 = new NostrPool(ident, db);
 
     await pool1.send({ content: '4', tags: [['p', '5566']], kind: 1 });
-    
-    const ret = await pool2.list([{kinds: [1], "#p": ['5566']}]);
 
-    expect(ret.length).toBe(4)
-    pool1.close()
+    const ret = await pool2.list([{ kinds: [1], '#p': ['5566'] }]);
+
+    expect(ret.length).toBe(4);
+    pool1.close();
   });
-
 });

@@ -28,10 +28,9 @@ export class DbEvent extends Model {
     event: NostrEvent,
     verified = false
   ): Promise<DbEvent> {
-
     const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
     const have = await posts.query(Q.where('event_id', event.id)).fetch();
- 
+
     if (have.length) {
       return have[0] as DbEvent;
     }
@@ -72,7 +71,6 @@ export class DbEvent extends Model {
 }
 
 export class ArcadeDb extends Database {
-
   async list(filter: Filter[]): Promise<NostrEvent[]> {
     const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
     const or: Q.Where = this.filterToQuery(filter);
@@ -87,9 +85,11 @@ export class ArcadeDb extends Database {
     const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
     const or: Q.Where = this.filterToQuery(filter);
     const records = await posts.query(or).fetch();
-    return records.length ? records.reduce((prev, cur)=>{
-        return (cur && (cur.created_at > prev.created_at)) ? cur : prev
-    }).created_at : 0
+    return records.length
+      ? records.reduce((prev, cur) => {
+          return cur && cur.created_at > prev.created_at ? cur : prev;
+        }).created_at
+      : 0;
   }
 
   private filterToQuery(filter: Filter[]) {

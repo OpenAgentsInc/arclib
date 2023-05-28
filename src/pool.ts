@@ -30,40 +30,37 @@ export class NostrPool {
     this.filters = new Map<string, SubInfo>();
   }
 
-  async list(
-    filters: Filter[],
-    db_only = false
-  ): Promise<NostrEvent[]> {
+  async list(filters: Filter[], db_only = false): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
       if (db_only) {
-          this.sub(
-            filters,
-            async (ev) => {
-              await this.db?.saveEvent(ev);
-            },
-            undefined,
-            since
-          );
+        this.sub(
+          filters,
+          async (ev) => {
+            await this.db?.saveEvent(ev);
+          },
+          undefined,
+          since
+        );
       } else {
-          // subscribe if needed, wait for eose
-          // save to db && return from db
-          await new Promise<void>((res, rej) => {
-            try {
-              this.sub(
-                filters,
-                async (ev) => {
-                  await this.db?.saveEvent(ev);
-                },
-                async () => {
-                  res();
-                },
-                since
-              );
-            } catch (e) {
-              rej(e);
-            }
-          });
+        // subscribe if needed, wait for eose
+        // save to db && return from db
+        await new Promise<void>((res, rej) => {
+          try {
+            this.sub(
+              filters,
+              async (ev) => {
+                await this.db?.saveEvent(ev);
+              },
+              async () => {
+                res();
+              },
+              since
+            );
+          } catch (e) {
+            rej(e);
+          }
+        });
       }
       return await this.db.list(filters);
     } else {
@@ -149,7 +146,7 @@ export class NostrPool {
     filters: Filter[],
     callback: (event: NostrEvent) => void,
     eose?: () => Promise<void>,
-    since?: number 
+    since?: number
   ): void {
     // subcribe to filters
     // maintain filter-subscription map
@@ -164,12 +161,12 @@ export class NostrPool {
     });
     const now = Date.now();
     if (new_filters.length) {
-      let sub_filters = new_filters
+      let sub_filters = new_filters;
       if (since) {
         // caller has stuff in the db for this filter, so just ask for more recent
-        sub_filters = sub_filters.map((f)=>{
-          return {...f, since}
-        })
+        sub_filters = sub_filters.map((f) => {
+          return { ...f, since };
+        });
       }
       const sub = this.pool.sub(this.relays, sub_filters);
       new_filters.forEach((f) => {
@@ -202,7 +199,7 @@ export class NostrPool {
 
   stop() {
     if (this.watch) {
-        this.watch.unsub();
+      this.watch.unsub();
     }
   }
 

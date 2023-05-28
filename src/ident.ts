@@ -1,4 +1,10 @@
-import { signEvent, getEventHash, getPublicKey, nip19, nip04 } from 'nostr-tools';
+import {
+  signEvent,
+  getEventHash,
+  getPublicKey,
+  nip19,
+  nip04,
+} from 'nostr-tools';
 
 import { strict as assert } from 'assert';
 import { generatePrivateKey } from 'nostr-tools';
@@ -43,11 +49,11 @@ export class ArcadeIdentity {
   }
 
   async nip04Encrypt(pubkey: string, content: string): Promise<string> {
-    return await nip04.encrypt(this.privKey, pubkey, content)
+    return await nip04.encrypt(this.privKey, pubkey, content);
   }
 
   async nip04Decrypt(pubkey: string, content: string): Promise<string> {
-    return await nip04.decrypt(this.privKey, pubkey, content)
+    return await nip04.decrypt(this.privKey, pubkey, content);
   }
 
   async signEvent(event: UnsignedEvent): Promise<NostrEvent> {
