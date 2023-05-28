@@ -3,9 +3,9 @@
 import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
-export async function listChannels(pool: NostrPool): Promise<ChannelInfo[]> {
+export async function listChannels(pool: NostrPool, db_only=false): Promise<ChannelInfo[]> {
   // todo: this should only use the store, not go and re-query stuff, being lazy to get things done
-  return (await pool.list([{ kinds: [40] }])).map((ent) => {
+  return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
     return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
   });
 }
@@ -49,8 +49,8 @@ class Nip04Manager {
     this.pool.sub(filter_ex, callback)
   }
 
-  async list(filter: Filter = {}): Promise<NostrEvent[]> {
-    const lst = await this.pool.list([{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }])
+  async list(filter: Filter = {}, db_only=false): Promise<NostrEvent[]> {
+    const lst = await this.pool.list([{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }], db_only)
 
     const mapped = await Promise.all(lst.map(async (ev: NostrEvent)=>{
         try {

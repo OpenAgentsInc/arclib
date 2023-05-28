@@ -101,9 +101,9 @@ class Nip28Channel {
     return this.pool.sub([{ kinds: [42], '#e': [channel_id], ...filter }], callback);
   }
 
-  async list(channel_id: string, filter: Filter = {}): Promise<NostrEvent[]> {
+  async list(channel_id: string, filter: Filter = {}, db_only=false): Promise<NostrEvent[]> {
     if (!channel_id) throw new Error('channel id is required');
-    return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }]);
+    return this.pool.list([{ kinds: [42], '#e': [channel_id], ...filter }], db_only);
   }
 
   async muteUser(params: { content: string; pubkey: string }): Promise<void> {

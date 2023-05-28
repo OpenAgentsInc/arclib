@@ -32,32 +32,44 @@ export class NostrPool {
 
   async list(
     filters: Filter[],
-    opts?: SubscriptionOptions
+    db_only = false
   ): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
-      // subscribe if needed, wait for eose
-      // save to db && return from db
-      await new Promise<void>((res, rej) => {
-        try {
+      if (db_only) {
           this.sub(
             filters,
             async (ev) => {
               await this.db?.saveEvent(ev);
             },
             async () => {
-              res();
             },
             since
           );
-        } catch (e) {
-          rej(e);
-        }
-      });
+      } else {
+          // subscribe if needed, wait for eose
+          // save to db && return from db
+          await new Promise<void>((res, rej) => {
+            try {
+              this.sub(
+                filters,
+                async (ev) => {
+                  await this.db?.saveEvent(ev);
+                },
+                async () => {
+                  res();
+                },
+                since
+              );
+            } catch (e) {
+              rej(e);
+            }
+          });
+      }
       return await this.db.list(filters);
     } else {
       // subsccribe to save events
-      return await this.pool.list(this.relays, filters, opts);
+      return await this.pool.list(this.relays, filters);
     }
   }
 
