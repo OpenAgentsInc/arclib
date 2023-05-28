@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Filter } from 'nostr-tools';
+import { Filter, nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
 export async function listChannels(pool: NostrPool, db_only=false): Promise<ChannelInfo[]> {
@@ -45,17 +45,21 @@ class Nip04Manager {
   }
 
   sub(callback: (ev: NostrEvent)=>void, filter: Filter = {}) {
-    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {kinds: [4], author: this.pool.ident.pubKey, ...filter}]
+    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {kinds: [4], authors: [this.pool.ident.pubKey], ...filter}]
     this.pool.sub(filter_ex, callback)
   }
 
   async list(filter: Filter = {}, db_only=false): Promise<NostrEvent[]> {
-    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {kinds: [4], author: this.pool.ident.pubKey, ...filter}]
+    const filter_ex = [{ kinds: [4], '#p': [this.pool.ident.pubKey], ...filter }, {kinds: [4], authors: [this.pool.ident.pubKey], ...filter}]
     const lst = await this.pool.list(filter_ex, db_only)
-
     const mapped = await Promise.all(lst.map(async (ev: NostrEvent)=>{
         try {
-            ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content) 
+            if (ev.pubkey != this.pool.ident.pubKey) {
+              ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content) 
+            } else {
+              const pubkey = ev.tags.find((t)=>t[0]=='p')?.[1] as string
+              ev.content = await nip04.decrypt(this.pool.ident.privKey, pubkey, ev.content)
+            }
             return ev.content ? ev : null
         } catch (e) {
             // can't decrypt, probably spam or whatever

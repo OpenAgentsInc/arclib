@@ -5,7 +5,7 @@ Object.assign(global, { crypto: require('crypto') });
 
 import NostrMini from 'nostrmini';
 
-import { NostrPool, ArcadeIdentity } from '../src';
+import { NostrPool, ArcadeIdentity, connectDb } from '../src';
 import {strict as assert} from 'assert'
 import Nip04Manager from '../src/private';
 
@@ -25,6 +25,7 @@ afterAll(async () => {
 });
 
 test('dm:simple', async () => {
+    const db = connectDb()
     const pool1 = new NostrPool(ident1);
     const pool2 = new NostrPool(ident2);
     await pool1.setRelays(relays);
