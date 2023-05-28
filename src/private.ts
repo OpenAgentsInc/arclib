@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Filter, nip04 } from 'nostr-tools';
+import { Filter, matchFilter, nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
 export async function listChannels(
@@ -50,16 +50,14 @@ class Nip04Manager {
   sub(
     callback: (ev: NostrEvent) => void,
     filter: Filter = {},
-    eose?: () => Promise<void>
+    eose?: () => Promise<void>,
+    pubkey?: string 
   ) {
-    const filter_ex = [
-      { kinds: [4], '#p': [this.pool.ident.pubKey], ...filter },
-      { kinds: [4], authors: [this.pool.ident.pubKey], ...filter },
-    ];
+    const filter_ex: Filter[] = this.filter(pubkey);
     this.pool.sub(
       filter_ex,
       async (ev) => {
-        const res = await this.decrypt(ev);
+        const res = matchFilter(filter, ev) ? await this.decrypt(ev) : null;
         if (res) {
           callback(ev);
         }
@@ -87,21 +85,28 @@ class Nip04Manager {
     }
   }
 
-  async list(filter: Filter = {}, db_only = false): Promise<NostrEvent[]> {
-    const filter_ex = [
-      { kinds: [4], '#p': [this.pool.ident.pubKey], ...filter },
-      { kinds: [4], authors: [this.pool.ident.pubKey], ...filter },
-    ];
+  async list(filter: Filter = {}, db_only = false, pubkey?:string): Promise<NostrEvent[]> {
+    const filter_ex: Filter[] = this.filter(pubkey);
     const lst = await this.pool.list(filter_ex, db_only);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
-        return await this.decrypt(ev);
+        return matchFilter(filter, ev) ? await this.decrypt(ev) : null
       })
     );
 
     return mapped.filter((ev: NostrEvent | null) => {
       return ev != null;
     }) as NostrEvent[];
+  }
+
+  public filter(pubkey?: string) {
+    const filter_ex: Filter[] = [
+      { kinds: [4], '#p': [this.pool.ident.pubKey] },
+    ];
+    if (pubkey) {
+      filter_ex.push({ kinds: [4], authors: [this.pool.ident.pubKey], '#p': [pubkey] });
+    }
+    return filter_ex;
   }
 }
 
