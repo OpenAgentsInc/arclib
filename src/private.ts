@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Filter, UnsignedEvent, matchFilter, nip04 } from 'nostr-tools';
-import { NostrPool, NostrEvent } from '.';
+import { Filter, matchFilter, nip04 } from 'nostr-tools';
+import { NostrPool, NostrEvent, UnsignedEvent } from '.';
 
 export async function listChannels(
   pool: NostrPool,
@@ -78,7 +78,11 @@ class PrivateMessageManager {
   async decrypt(ev: NostrEvent) {
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
-        ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
+        if (ev.kind == 99) {
+          ev = await this.pool.ident.nipXXDecrypt(ev);
+        } else {
+          ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
+        }
       } else {
         const pubkey = ev.tags.find((t) => t[0] == 'p')?.[1] as string;
         ev.content = await nip04.decrypt(
