@@ -219,6 +219,10 @@ export class NostrPool {
     return [event, this.pool.publish(this.relays, event)] as [NostrEvent, Pub];
   }
 
+  async publishRaw(event: NostrEvent) {
+    return [event, this.pool.publish(this.relays, event)] as [NostrEvent, Pub];
+  }
+
   /**
    * This is an asynchronous function that sends an unsigned event and waits for it to be published,
    * returning the event once it has been successfully sent to at least 1 relay.
@@ -232,6 +236,16 @@ export class NostrPool {
       });
     });
   }
+
+  async sendRaw(message: NostrEvent): Promise<NostrEvent> {
+    const [event, pubs] = await this.publishRaw(message);
+    return new Promise<NostrEvent>((res) => {
+      pubs.on('ok', () => {
+        res(event);
+      });
+    });
+  }
+
 
   /**
    * This function adds a callback function to an array of event callbacks.

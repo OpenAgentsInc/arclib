@@ -7,7 +7,7 @@ import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity, connectDb, NostrEvent } from '../src';
 import { strict as assert } from 'assert';
-import Nip04Manager from '../src/private';
+import PrivateMessageManager from '../src/private';
 
 const ident1 = ArcadeIdentity.generate();
 const ident2 = ArcadeIdentity.generate();
@@ -30,8 +30,8 @@ test('dm:simple', async () => {
   const pool2 = new NostrPool(ident2);
   await pool1.setRelays(relays);
   await pool2.setRelays(relays);
-  const dms1 = new Nip04Manager(pool1);
-  const dms2 = new Nip04Manager(pool2);
+  const dms1 = new PrivateMessageManager(pool1);
+  const dms2 = new PrivateMessageManager(pool2);
   await dms1.send(ident2.pubKey, 'yo');
   assert((await dms2.list())[0].content == 'yo');
   assert((await dms1.list({}, false, ident2.pubKey))[0].content == 'yo');
@@ -39,14 +39,15 @@ test('dm:simple', async () => {
   pool2.close();
 });
 
+
 test('dm:sub', async () => {
   const db = connectDb();
   const pool1 = new NostrPool(ident1);
   const pool2 = new NostrPool(ident2);
   await pool1.setRelays(relays);
   await pool2.setRelays(relays);
-  const dms1 = new Nip04Manager(pool1);
-  const dms2 = new Nip04Manager(pool2);
+  const dms1 = new PrivateMessageManager(pool1);
+  const dms2 = new PrivateMessageManager(pool2);
 
   const evs: NostrEvent[] = [];
   await new Promise<void>((res) => {

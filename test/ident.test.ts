@@ -1,5 +1,7 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
+Object.assign(global, { crypto: require('crypto') });
+
 import {
   nip19,
   generatePrivateKey,
@@ -12,11 +14,38 @@ function getTestKeys() {
   const sk = generatePrivateKey();
   const nsec = nip19.nsecEncode(sk);
   const npub = getPublicKey(sk);
-  return { nsec, npub };
+  return [ nsec, npub ]
 }
 
 describe('signEvent', () => {
-  const { nsec, npub } = getTestKeys();
+  const [ nsec, npub ] = getTestKeys();
+
+  it('can nipxxencrypt', async () => {
+  const [ nsec2, npub2 ] = getTestKeys();
+    const bob = new ArcadeIdentity(
+      nsec,
+      '1btcxxx',
+      'simulx@walletofsatoshi.com'
+    );
+    const alice = new ArcadeIdentity(
+       nsec2,
+      '1btcxxx',
+      'simulx@walletofsatoshi.com'
+    );
+ 
+    const inner = await bob.signEvent({
+      kind: 1,
+      tags: [['tag1'], ['tag2']],
+      content: 'test-content',
+    });
+    const outer = await bob.nipXXEncrypt(alice.pubKey, inner, 1)
+    const same = await alice.nipXXDecrypt(alice.privKey, outer)
+
+    // @ts-ignore 
+    const comp = ({kind, tags, content, created_at, pubkey, id})=>({kind, tags, content, created_at, pubkey, id})
+
+    expect(comp(same)).toStrictEqual(comp(inner))
+  })
 
   it('returns a valid ArcadeEvent', async () => {
     const identity = new ArcadeIdentity(
@@ -42,7 +71,7 @@ describe('signEvent', () => {
   });
 
   it('throws an error for invalid event kind', async () => {
-    const { nsec } = getTestKeys();
+    const [ nsec ] = getTestKeys();
     const identity = new ArcadeIdentity(nsec, 'test-address', 'test-lnurl');
 
     await expect(

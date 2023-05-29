@@ -92,6 +92,7 @@
   "packageManager": "yarn@1.22.19",
   "dependencies": {
     "@babel/plugin-proposal-class-static-block": "^7.21.0",
+    "@noble/curves": "^1.0.0",
     "@nozbe/watermelondb": "<0.26.0",
     "async-mutex": "^0.4.0",
     "isomorphic-unfetch": "^4.0.2",

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Filter, matchFilter, nip04 } from 'nostr-tools';
+import { Filter, UnsignedEvent, matchFilter, nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
 export async function listChannels(
@@ -21,7 +21,7 @@ interface ChannelInfo {
   author?: string;
 }
 
-class Nip04Manager {
+class PrivateMessageManager {
   private pool: NostrPool;
   //  private store: SqliteStore;
 
@@ -45,6 +45,15 @@ class Nip04Manager {
       tags: [['p', pubkey], ...oth, ...tags],
     });
     return ev;
+  }
+
+  async sendDirect(
+    pubkey: string,
+    content: UnsignedEvent,
+    version = 1
+  ): Promise<NostrEvent> {
+    const ev = await this.pool.ident.nipXXEncrypt(pubkey, content, version)
+    return await this.pool.sendRaw(ev)
   }
 
   sub(
@@ -110,4 +119,4 @@ class Nip04Manager {
   }
 }
 
-export default Nip04Manager;
+export default PrivateMessageManager;
