@@ -66,77 +66,99 @@ export class ArcadeIdentity {
     return await nip04.decrypt(this.privKey, pubkey, content);
   }
 
-  async nipXXEncrypt(pubkey: string, inner: UnsignedEvent, version: number): Promise<NostrEvent> {
-    if (version != 1)
-      throw new Error('version not supported');
-    const event = await this.signEvent(inner)
-    const content = JSON.stringify(event)
-    const epriv = generatePrivateKey()
-    const epub = getPublicKey(epriv)
-    const key = secp256k1.getSharedSecret(epriv, '02' + pubkey)
+  async nip04XEncrypt(privkey: string, pubkey: string, content: string, version: number, iv?: Uint8Array) : Promise<string> {
+    const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
-    const iv = randomBytes(16)
+    iv = iv??randomBytes(16)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
     
     let plaintext = utf8Encoder.encode(content)
     let cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
-      {name: 'AES-CBC'},
+      {name: 'AES-GCM'},
       false,
       ['encrypt']
     )
 
     let ciphertext = await crypto.subtle.encrypt(
-      {name: 'AES-CBC', iv},
+      {name: 'AES-GCM', iv},
       cryptoKey,
       plaintext
     )
-    
+
     let ctb64 = base64.encode(new Uint8Array(ciphertext))
     let ivb64 = base64.encode(new Uint8Array(iv.buffer))
-    
-    const unsigned = {
-      kind: 99,
-      content: ctb64 + "?iv=" + ivb64,
-      pubkey: epub,
-      tags: [["p", pubkey], ["v", JSON.stringify(version)]]
-    }
-    const signed = await this.signEventWith(unsigned, epriv, epub)
-    return signed
+   
+    return ctb64 + "??" + ivb64 + "??" + version.toString()
   }
  
-async nipXXDecrypt(privkey: string, event: NostrEvent): Promise<NostrEvent> {
-    const vtag = event.tags.find((t)=>t[0]=="v")
-    const version = vtag?JSON.parse(vtag[1]):0
-    
-    if (version != 1)
-      throw new Error('version not supported');
-
-    let key = secp256k1.getSharedSecret(privkey, '02' + event.pubkey)
-    const normalizedKey = key.slice(1,33)
-    
-    let [ctb64, ivb64] = event.content.split('?iv=')
+async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<string> {
+    let [ctb64, ivb64, version] = data.split('??')
+    if (version != "1")
+      throw Error("unknown version")
 
     let iv = base64.decode(ivb64)
     let ciphertext = base64.decode(ctb64)
+    const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
+    const normalizedKey = key.slice(1,33)
+
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
     let cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
-      {name: 'AES-CBC'},
+      {name: 'AES-GCM'},
       false,
       ['decrypt']
     )
 
     let plaintext = await crypto.subtle.decrypt(
-      {name: 'AES-CBC', iv},
+      {name: 'AES-GCM', iv},
       cryptoKey,
       ciphertext
     )
 
     let text = utf8Decoder.decode(plaintext)
+
+    return text
+  }
+
+
+  async nipXXEncrypt(pubkey: string, inner: UnsignedEvent, version: number): Promise<NostrEvent> {
+    const event = await this.signEvent(inner)
+    const content = JSON.stringify(event)
+    const iv = randomBytes(16)
+    const dpriv_n = (BigInt("0x" + this.privKey) * BigInt("0x" + Buffer.from(iv).toString("hex"))) % secp256k1.CURVE.n
+    const epriv = dpriv_n.toString(16)
+    const epub = getPublicKey(epriv)
+    const encrypted = await this.nip04XEncrypt(epriv, pubkey, content, version, iv)
+    const unsigned = {
+      kind: 99,
+      content: encrypted,
+      pubkey: this.pubKey,
+      tags: [["p", pubkey]]
+    }
+    const signed = await this.signEventWith(unsigned, epriv, epub)
+    return signed
+  }
+ 
+  async nipXXDecrypt(event: NostrEvent): Promise<NostrEvent> {
+    const ptags = event.tags.find((t)=>t[0]=="p")
+    if (!ptags)
+      throw Error("missing p tag")
+    const ptag = ptags[1]
+    let text: string
+    if (ptag != this.pubKey) {
+      const [, ivb64, ] = event.content.split('??')
+      const iv = base64.decode(ivb64) 
+      const dpriv_n = (BigInt("0x" + this.privKey) * BigInt("0x" + Buffer.from(iv).toString("hex"))) % secp256k1.CURVE.n
+      const epriv = dpriv_n.toString(16)
+      // decrypt my own sent message?
+      text = await this.nip04XDecrypt(epriv, ptag, event.content)
+    } else {
+      text = await this.nip04XDecrypt(this.privKey, event.pubkey, event.content)
+    }
 
     let message = JSON.parse(text)
 

@@ -39,12 +39,14 @@ describe('signEvent', () => {
       content: 'test-content',
     });
     const outer = await bob.nipXXEncrypt(alice.pubKey, inner, 1)
-    const same = await alice.nipXXDecrypt(alice.privKey, outer)
+    const same = await alice.nipXXDecrypt(outer)
+    const same2 = await bob.nipXXDecrypt(outer)
 
     // @ts-ignore 
     const comp = ({kind, tags, content, created_at, pubkey, id})=>({kind, tags, content, created_at, pubkey, id})
 
     expect(comp(same)).toStrictEqual(comp(inner))
+    expect(comp(same)).toStrictEqual(comp(same2))
   })
 
   it('returns a valid ArcadeEvent', async () => {

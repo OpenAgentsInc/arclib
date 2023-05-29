@@ -47,7 +47,7 @@ class PrivateMessageManager {
     return ev;
   }
 
-  async sendDirect(
+  async sendXX(
     pubkey: string,
     content: UnsignedEvent,
     version = 1
@@ -110,7 +110,7 @@ class PrivateMessageManager {
 
   public filter(pubkey?: string) {
     const filter_ex: Filter[] = [
-      { kinds: [4], '#p': [this.pool.ident.pubKey] },
+      { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
       filter_ex.push({ kinds: [4], authors: [this.pool.ident.pubKey], '#p': [pubkey] });
