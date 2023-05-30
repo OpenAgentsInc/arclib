@@ -3,14 +3,16 @@
 import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
-export async function listChannels(pool: NostrPool): Promise<ChannelInfo[]> {
-  // todo: this should only use the store, not go and re-query stuff, being lazy to get things done
-  return (await pool.list([{ kinds: [40] }])).map((ent) => {
+export async function listChannels(
+  pool: NostrPool,
+  db_only = false
+): Promise<ChannelInfo[]> {
+  return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
     return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
   });
 }
 
-interface ChannelInfo {
+export interface ChannelInfo {
   name: string;
   about: string;
   picture: string;
@@ -59,12 +61,27 @@ class Nip28Channel {
     return ev;
   }
 
-  async setMeta(meta: ChannelInfo) {
-    throw new Error('not implemented yet');
+  async setMeta(channel_id: string, meta: ChannelInfo) {
+    if (!channel_id) throw new Error('channel id is required');
+    const ev = await this.pool.send({
+      kind: 41,
+      content: JSON.stringify(meta),
+      tags: [['e', channel_id, this.pool.relays[0]]],
+    });
+    return ev;
   }
 
-  async getMeta(): Promise<ChannelInfo> {
-    throw new Error('not implemented yet');
+  async getMeta(channel_id: string): Promise<ChannelInfo> {
+    const ev = await this.pool.list([{ kinds: [40, 41], ids: [channel_id] }]);
+    if (ev.length > 0) {
+      return {
+        id: ev[0].id,
+        author: ev[0].pubkey,
+        ...JSON.parse(ev[0].content),
+      };
+    } else {
+      throw new Error(`Channel not found`);
+    }
   }
 
   async send(

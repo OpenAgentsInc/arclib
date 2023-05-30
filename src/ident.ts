@@ -7,13 +7,14 @@ import {
   verifySignature,
 } from 'nostr-tools';
 
-import * as secp256k1 from '@noble/secp256k1'
+import { secp256k1 } from '@noble/curves/secp256k1'
 import { strict as assert } from 'assert';
 import { generatePrivateKey } from 'nostr-tools';
 import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base'
+import * as utils from '@noble/curves/abstract/utils';
 
 const utf8Encoder = new TextEncoder()
 const utf8Decoder = new TextDecoder()
@@ -38,14 +39,19 @@ export class ArcadeIdentity {
   public pubKey: string;
 
   constructor(
-    public nsec: string,
+    public nsec_or_priv: string,
     public bitcoinAddress: string = '',
     public lnUrl: string = ''
   ) {
-    this.nsec = nsec;
-    const { type, data } = nip19.decode(nsec);
-    this.privKey = <string>data;
-    assert(type == 'nsec');
+    if (nsec_or_priv.startsWith("nsec")) {
+      this.nsec_or_priv = nsec_or_priv;
+      const { type, data } = nip19.decode(nsec_or_priv);
+      this.privKey = <string>data;
+      assert(type == 'nsec');
+    } else {
+      this.privKey = nsec_or_priv
+      this.nsec_or_priv = nip19.nsecEncode(this.privKey)
+    }
     this.bitcoinAddress = bitcoinAddress;
     this.lnUrl = lnUrl;
     this.pubKey = getPublicKey(this.privKey);
@@ -69,6 +75,7 @@ export class ArcadeIdentity {
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
     iv = iv??randomBytes(16)
+    console.log("normalized encrypt", normalizedKey, iv)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
     
     const plaintext = utf8Encoder.encode(content)
@@ -102,6 +109,7 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
 
+    console.log("normalized decrypt", normalizedKey, iv)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
     const cryptoKey = await crypto.subtle.importKey(
@@ -128,8 +136,8 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
     const event = await this.signEvent(inner)
     const content = JSON.stringify(event)
     const iv = randomBytes(16)
-    const dpriv_n = (BigInt("0x" + this.privKey) * BigInt("0x" + Buffer.from(iv).toString("hex"))) % secp256k1.CURVE.n
-    const epriv = dpriv_n.toString(16)
+    const dpriv_n = (utils.bytesToNumberBE(utils.hexToBytes(this.privKey)) * utils.bytesToNumberBE(iv)) % secp256k1.CURVE.n
+    const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32))
     const epub = getPublicKey(epriv)
     const encrypted = await this.nip04XEncrypt(epriv, pubkey, content, version, iv)
     const unsigned = {
@@ -151,8 +159,8 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
     if (ptag != this.pubKey) {
       const [, ivb64, ] = event.content.split('??')
       const iv = base64.decode(ivb64) 
-      const dpriv_n = (BigInt("0x" + this.privKey) * BigInt("0x" + Buffer.from(iv).toString("hex"))) % secp256k1.CURVE.n
-      const epriv = dpriv_n.toString(16)
+      const dpriv_n = (utils.bytesToNumberBE(utils.hexToBytes(this.privKey)) * utils.bytesToNumberBE(iv)) % secp256k1.CURVE.n
+      const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32))
       // decrypt my own sent message?
       text = await this.nip04XDecrypt(epriv, ptag, event.content)
     } else {

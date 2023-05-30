@@ -62,7 +62,7 @@ class PrivateMessageManager {
     eose?: () => Promise<void>,
     pubkey?: string 
   ) {
-    const filter_ex: Filter[] = this.filter(pubkey);
+    const filter_ex: Filter<number>[] = this.filter(pubkey);
     this.pool.sub(
       filter_ex,
       async (ev) => {
@@ -99,7 +99,7 @@ class PrivateMessageManager {
   }
 
   async list(filter: Filter = {}, db_only = false, pubkey?:string): Promise<NostrEvent[]> {
-    const filter_ex: Filter[] = this.filter(pubkey);
+    const filter_ex: Filter<number>[] = this.filter(pubkey);
     const lst = await this.pool.list(filter_ex, db_only);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
@@ -113,7 +113,7 @@ class PrivateMessageManager {
   }
 
   public filter(pubkey?: string) {
-    const filter_ex: Filter[] = [
+    const filter_ex: Filter<number>[] = [
       { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {

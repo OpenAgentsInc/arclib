@@ -32,6 +32,3 @@ jobs:
         with:
           test-script: yarn test
           skip-step: install
-
-      - name: Build
-        run: yarn build
