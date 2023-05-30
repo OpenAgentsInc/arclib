@@ -88,7 +88,7 @@ class EncChannel {
     return await this.pool.sendRaw(ev);
   }
 
-  async getMeta(info: EncChannelInfo, db_only: boolean = false): Promise<ChannelInfo> {
+  async getMeta(info: EncChannelInfo, db_only = false): Promise<ChannelInfo> {
     const lst = await this.pool.list(
       [{ kinds: [403], "#p": [info.pubkey as string] }],
       db_only
