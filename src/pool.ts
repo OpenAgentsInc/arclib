@@ -30,7 +30,7 @@ export class NostrPool {
     this.filters = new Map<string, SubInfo>();
   }
 
-  async list(filters: Filter[], db_only = false): Promise<NostrEvent[]> {
+  async list(filters: Filter<number>[], db_only = false): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
       if (db_only) {
@@ -143,7 +143,7 @@ export class NostrPool {
   }
 
   sub(
-    filters: Filter[],
+    filters: Filter<number>[],
     callback: (event: NostrEvent) => void,
     eose?: () => Promise<void>,
     since?: number
