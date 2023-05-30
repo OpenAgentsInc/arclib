@@ -3,8 +3,11 @@
 import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 
-export async function listChannels(pool: NostrPool): Promise<ChannelInfo[]> {
-  return (await pool.list([{ kinds: [40] }], true)).map((ent) => {
+export async function listChannels(
+  pool: NostrPool,
+  db_only = false
+): Promise<ChannelInfo[]> {
+  return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
     return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
   });
 }
