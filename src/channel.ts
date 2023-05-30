@@ -10,7 +10,7 @@ export async function listChannels(pool: NostrPool): Promise<ChannelInfo[]> {
   });
 }
 
-interface ChannelInfo {
+export interface ChannelInfo {
   name: string;
   about: string;
   picture: string;
