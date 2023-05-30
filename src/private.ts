@@ -113,7 +113,7 @@ class PrivateMessageManager {
   }
 
   public filter(pubkey?: string) {
-    const filter_ex: Filter[] = [
+    const filter_ex: Filter<4|99>[] = [
       { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
