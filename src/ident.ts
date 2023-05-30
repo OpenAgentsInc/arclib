@@ -7,7 +7,7 @@ import {
   verifySignature,
 } from 'nostr-tools';
 
-import * as secp256k1 from '@noble/secp256k1'
+import { secp256k1 } from '@noble/curves/secp256k1'
 import { strict as assert } from 'assert';
 import { generatePrivateKey } from 'nostr-tools';
 import { hkdf } from '@noble/hashes/hkdf';
