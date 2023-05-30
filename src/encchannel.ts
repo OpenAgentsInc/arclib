@@ -104,19 +104,23 @@ class EncChannel {
       content: await this.pool.ident.nip04XEncrypt(epriv, channel_pubkey, content, 1),
       tags: [['p', channel_pubkey]]
     }
-    const ev = tmp_ident.signEvent(message)
-    return ev;
+    const ev = await tmp_ident.signEvent(message)
+    return await this.pool.sendRaw(ev);
   }
 
   async sub(
-    channel_pubkey: string,
+    channel: EncChannelInfo,
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}
   ) {
-    if (!channel_pubkey) throw new Error('channel id is required');
+    if (!channel.pubkey) throw new Error('channel id is required');
     return this.pool.sub(
-      [{ kinds: [402], "#p": [channel_pubkey], ...filter }],
-      callback
+      [{ kinds: [402], "#p": [channel.pubkey], ...filter }],
+      async (ev) => {
+        const dec = await this.decrypt(channel, ev)
+        if (dec)
+          callback(dec)
+      }
     );
   }
 
@@ -128,22 +132,31 @@ class EncChannel {
     }
   }
 
+  async decrypt(channel: EncChannelInfo, ev: NostrEvent): Promise<NostrEvent | null> {
+      const dec = await channel.ident?.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
+      if (dec) {
+        ev.content = dec
+        return ev
+      } else {
+        return null
+      }
+  }
+
   async list(
     channel: EncChannelInfo,
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
     this.augmentChannelInfo(channel)
-    console.log("looking for channel: ", channel.pubkey)
+    if (!channel.pubkey) throw new Error('channel id is required');
     
     const lst = await this.pool.list(
-      [{ kinds: [402], "#p": [channel.pubkey as string], ...filter }],
+      [{ kinds: [402], "#p": [channel.pubkey], ...filter }],
       db_only
     );
 
-    const map = await Promise.all(lst.map(async (ev)=>{
-        return await channel.ident?.nipXXDecrypt(ev)
-    }))
+    const map = await Promise.all(lst.map(async (ev)=>{return await this.decrypt(channel, ev)}))
+
     return map.filter(ev=>ev!=null) as NostrEvent[]
   }
 
