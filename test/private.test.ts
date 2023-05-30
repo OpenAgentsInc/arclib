@@ -5,7 +5,7 @@ Object.assign(global, { crypto: require('crypto') });
 
 import NostrMini from 'nostrmini';
 
-import { NostrPool, ArcadeIdentity, connectDb, NostrEvent } from '../src';
+import { NostrPool, ArcadeIdentity, NostrEvent } from '../src';
 import { strict as assert } from 'assert';
 import PrivateMessageManager from '../src/private';
 
@@ -25,7 +25,6 @@ afterAll(async () => {
 });
 
 test('dm:simple', async () => {
-  const db = connectDb();
   const pool1 = new NostrPool(ident1);
   const pool2 = new NostrPool(ident2);
   await pool1.setRelays(relays);
@@ -41,7 +40,6 @@ test('dm:simple', async () => {
 
 
 test('dm:directed', async () => {
-  const db = connectDb();
   const pool1 = new NostrPool(ident1);
   const pool2 = new NostrPool(ident2);
   await pool1.setRelays(relays);
@@ -60,7 +58,6 @@ test('dm:directed', async () => {
 
 
 test('dm:sub', async () => {
-  const db = connectDb();
   const pool1 = new NostrPool(ident1);
   const pool2 = new NostrPool(ident2);
   await pool1.setRelays(relays);
