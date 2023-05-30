@@ -14,7 +14,6 @@ import { hkdf } from '@noble/hashes/hkdf';
 import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base'
-import { sign } from 'crypto';
 
 const utf8Encoder = new TextEncoder()
 const utf8Decoder = new TextDecoder()
@@ -72,8 +71,8 @@ export class ArcadeIdentity {
     iv = iv??randomBytes(16)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
     
-    let plaintext = utf8Encoder.encode(content)
-    let cryptoKey = await crypto.subtle.importKey(
+    const plaintext = utf8Encoder.encode(content)
+    const cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
       {name: 'AES-GCM'},
@@ -81,31 +80,31 @@ export class ArcadeIdentity {
       ['encrypt']
     )
 
-    let ciphertext = await crypto.subtle.encrypt(
+    const ciphertext = await crypto.subtle.encrypt(
       {name: 'AES-GCM', iv},
       cryptoKey,
       plaintext
     )
 
-    let ctb64 = base64.encode(new Uint8Array(ciphertext))
-    let ivb64 = base64.encode(new Uint8Array(iv.buffer))
+    const ctb64 = base64.encode(new Uint8Array(ciphertext))
+    const ivb64 = base64.encode(new Uint8Array(iv.buffer))
    
     return ctb64 + "??" + ivb64 + "??" + version.toString()
   }
  
 async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<string> {
-    let [ctb64, ivb64, version] = data.split('??')
+    const [ctb64, ivb64, version] = data.split('??')
     if (version != "1")
       throw Error("unknown version")
 
-    let iv = base64.decode(ivb64)
-    let ciphertext = base64.decode(ctb64)
+    const iv = base64.decode(ivb64)
+    const ciphertext = base64.decode(ctb64)
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
 
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
-    let cryptoKey = await crypto.subtle.importKey(
+    const cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
       {name: 'AES-GCM'},
@@ -113,13 +112,13 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
       ['decrypt']
     )
 
-    let plaintext = await crypto.subtle.decrypt(
+    const plaintext = await crypto.subtle.decrypt(
       {name: 'AES-GCM', iv},
       cryptoKey,
       ciphertext
     )
 
-    let text = utf8Decoder.decode(plaintext)
+    const text = utf8Decoder.decode(plaintext)
 
     return text
   }
@@ -160,7 +159,7 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
       text = await this.nip04XDecrypt(this.privKey, event.pubkey, event.content)
     }
 
-    let message = JSON.parse(text)
+    const message = JSON.parse(text)
 
     if (!verifySignature(message)) {
       throw Error("unable to verify")

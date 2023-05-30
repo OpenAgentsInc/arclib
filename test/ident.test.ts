@@ -21,7 +21,7 @@ describe('signEvent', () => {
   const [ nsec, npub ] = getTestKeys();
 
   it('can nipxxencrypt', async () => {
-  const [ nsec2, npub2 ] = getTestKeys();
+  const [ nsec2 ] = getTestKeys();
     const bob = new ArcadeIdentity(
       nsec,
       '1btcxxx',
@@ -42,6 +42,7 @@ describe('signEvent', () => {
     const same = await alice.nipXXDecrypt(outer)
     const same2 = await bob.nipXXDecrypt(outer)
 
+    // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore 
     const comp = ({kind, tags, content, created_at, pubkey, id})=>({kind, tags, content, created_at, pubkey, id})
 
