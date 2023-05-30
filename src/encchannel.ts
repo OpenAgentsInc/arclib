@@ -3,12 +3,12 @@
 import { Filter, generatePrivateKey, getPublicKey } from 'nostr-tools';
 import { NostrPool, NostrEvent, ArcadeIdentity } from '.';
 import {ChannelInfo} from './channel'
-import { nsecEncode } from 'nostr-tools/lib/nip19';
+import { nip19 } from 'nostr-tools';
 
 interface EncChannelInfo extends ChannelInfo {
-  ident: ArcadeIdentity;
   privkey: string
   pubkey?: string
+  ident?: ArcadeIdentity;
 }
 
 class EncChannel {
@@ -57,7 +57,7 @@ class EncChannel {
     return ret ?? null;
   }
 
-  async createPrivate(meta: ChannelInfo, member_pubkeys: string[]): Promise<string> {
+  async createPrivate(meta: ChannelInfo, member_pubkeys: string[]): Promise<EncChannelInfo> {
     const epriv = generatePrivateKey()
     const epub = getPublicKey(epriv)
     const set = new Set(member_pubkeys)
@@ -74,7 +74,7 @@ class EncChannel {
     }))
 
     this._knownChannels.push({ ...meta, id: epub, author: this.pool.ident.pubKey, privkey: epriv });
-    return epub;
+    return xmeta;
   }
 
   async setMeta(meta: ChannelInfo) {
@@ -97,17 +97,14 @@ class EncChannel {
     if (replyTo) {
       oth.push(['e', replyTo, this.pool.relays[0], 'reply']);
     }
-
-    const inner = {
+    const epriv = generatePrivateKey()
+    const tmp_ident = new ArcadeIdentity(epriv) 
+    const message = {
       kind: 402,
-      content: content,
-      tags: [['e', channel_pubkey, this.pool.relays[0], 'root'], ...oth, ...tags],
+      content: await this.pool.ident.nip04XEncrypt(epriv, channel_pubkey, content, 1),
+      tags: [['p', channel_pubkey]]
     }
-    
-    const enc = await this.pool.ident.nipXXEncrypt(channel_pubkey, inner, 1)
-      
-    const ev = await this.pool.sendRaw(enc)
-
+    const ev = tmp_ident.signEvent(message)
     return ev;
   }
 
@@ -118,9 +115,17 @@ class EncChannel {
   ) {
     if (!channel_pubkey) throw new Error('channel id is required');
     return this.pool.sub(
-      [{ kinds: [99], authors: [channel_pubkey], ...filter }],
+      [{ kinds: [402], "#p": [channel_pubkey], ...filter }],
       callback
     );
+  }
+
+  augmentChannelInfo(channel: EncChannelInfo) {
+    if (!channel.pubkey) {
+      channel.pubkey = getPublicKey(channel.privkey)
+      const nsec = nip19.nsecEncode(channel.privkey)
+      channel.ident = new ArcadeIdentity(nsec)
+    }
   }
 
   async list(
@@ -128,20 +133,18 @@ class EncChannel {
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
-    if (!channel.pubkey) {
-      channel.pubkey = getPublicKey(channel.privkey)
-      const nsec = nsecEncode(channel.privkey)
-      channel.ident = new ArcadeIdentity(nsec)
-    }
+    this.augmentChannelInfo(channel)
+    console.log("looking for channel: ", channel.pubkey)
+    
     const lst = await this.pool.list(
-      [{ kinds: [99], authors: [channel.pubkey], ...filter }],
+      [{ kinds: [402], "#p": [channel.pubkey as string], ...filter }],
       db_only
     );
 
     const map = await Promise.all(lst.map(async (ev)=>{
-        return await channel.ident.nipXXDecrypt(ev)
+        return await channel.ident?.nipXXDecrypt(ev)
     }))
-    return map.filter(ev=>ev!=null)
+    return map.filter(ev=>ev!=null) as NostrEvent[]
   }
 
   async muteUser(params: { content: string; pubkey: string }): Promise<void> {
