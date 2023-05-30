@@ -37,11 +37,28 @@ describe('EncChannel', () => {
       []
     );
     expect(await echan.list(group)).toHaveLength(0);
-    expect(await echan.getChannel('name')).toBeTruthy();
+    expect(await echan.getChannelByName('name')).toBeTruthy();
     console.log('sending to channel', group.id);
     const ev = await echan.send(group.pubkey as string, 'hello world');
     console.log('sent event', ev);
     expect(await echan.list(group)).toHaveLength(1);
+    await pool.close();
+  });
+
+  it('can meta', async () => {
+    const pool = new NostrPool(ident);
+    await pool.setRelays(relays);
+    const echan = new EncChannel(pool);
+    const group = await echan.createPrivate({
+      name: 'name',
+      about: 'about',
+      picture: 'picture',
+    },
+      []
+    );
+    await echan.setMeta(group.pubkey, {name: "bob", about: "bob", picture: "bob"})
+    await echan.setMeta(group.pubkey, {name: "bob2", about: "bob2", picture: "bob2"})
+    expect(await echan.getMeta(group)).toEqual({name: "bob2", about: "bob2", picture: "bob2"})
     await pool.close();
   });
 });

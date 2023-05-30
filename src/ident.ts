@@ -75,6 +75,7 @@ export class ArcadeIdentity {
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
     iv = iv??randomBytes(16)
+    console.log("normalized encrypt", normalizedKey, iv)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
     
     const plaintext = utf8Encoder.encode(content)
@@ -108,6 +109,7 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
 
+    console.log("normalized decrypt", normalizedKey, iv)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
     const cryptoKey = await crypto.subtle.importKey(

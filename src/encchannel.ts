@@ -3,12 +3,10 @@
 import { Filter, generatePrivateKey, getPublicKey } from 'nostr-tools';
 import { NostrPool, NostrEvent, ArcadeIdentity } from '.';
 import {ChannelInfo} from './channel'
-import { nip19 } from 'nostr-tools';
 
 interface EncChannelInfo extends ChannelInfo {
   privkey: string
-  pubkey?: string
-  ident?: ArcadeIdentity;
+  pubkey: string
 }
 
 class EncChannel {
@@ -50,11 +48,12 @@ class EncChannel {
     return this._knownChannels;
   }
 
-  async getChannel(name: string): Promise<EncChannelInfo | null> {
-    const ret = (await this.knownChannels()).filter((ent) => {
-      return ent.name == name;
-    })[0];
-    return ret ?? null;
+  async getChannelByName(name: string, db_only = false): Promise<EncChannelInfo | null> {
+    return (await this.listChannels(db_only)).filter(ev=>ev.name==name)[0]
+  }
+
+  async getChannelById(channel_pubkey: string, db_only = false): Promise<EncChannelInfo | null> {
+    return (await this.listChannels(db_only)).filter(ev=>ev.pubkey==channel_pubkey)[0]
   }
 
   async createPrivate(meta: ChannelInfo, member_pubkeys: string[]): Promise<EncChannelInfo> {
@@ -62,7 +61,7 @@ class EncChannel {
     const epub = getPublicKey(epriv)
     const set = new Set(member_pubkeys)
     set.add(this.pool.ident.pubKey)
-    const xmeta: EncChannelInfo = {privkey: epriv, ...meta}
+    const xmeta: EncChannelInfo = {privkey: epriv, pubkey: epub, ...meta}
     await Promise.all(Array.from(set).map(async (pubkey)=>{
       const inner =  {
         kind: 400,
@@ -73,16 +72,37 @@ class EncChannel {
       await this.pool.sendRaw(enc)
     }))
 
-    this._knownChannels.push({ ...meta, id: epub, author: this.pool.ident.pubKey, privkey: epriv });
+    this._knownChannels.push({ ...meta, id: epub, author: this.pool.ident.pubKey, privkey: epriv, pubkey: epub });
     return xmeta;
   }
 
-  async setMeta(meta: ChannelInfo) {
-    throw new Error('not implemented yet');
+  async setMeta(channel_pubkey: string, meta: ChannelInfo) {
+    const epriv = generatePrivateKey()
+    const tmp_ident = new ArcadeIdentity(epriv) 
+    const message = {
+      kind: 403,
+      content: await this.pool.ident.nip04XEncrypt(epriv, channel_pubkey, JSON.stringify(meta), 1),
+      tags: [['p', channel_pubkey]]
+    }
+    const ev = await tmp_ident.signEvent(message)
+    return await this.pool.sendRaw(ev);
   }
 
-  async getMeta(): Promise<ChannelInfo> {
-    throw new Error('not implemented yet');
+  async getMeta(info: EncChannelInfo, db_only: boolean = false): Promise<ChannelInfo> {
+    const lst = await this.pool.list(
+      [{ kinds: [403], "#p": [info.pubkey as string] }],
+      db_only
+    );
+    const map = await Promise.all(lst.map(async (ev) => {
+      console.log("decrypting", info, ev)
+      return await this.decrypt(info, ev);
+    }));
+    const filt = map.filter((ev) => ev != null)
+    const red = filt.length ? filt.reduce((_acc, curr) => {
+      return curr;
+    }) : null;
+    const {name, about, picture} = info
+    return red ? JSON.parse(red.content) : {name, about, picture};
   }
 
   async send(
@@ -124,20 +144,18 @@ class EncChannel {
     );
   }
 
-  augmentChannelInfo(channel: EncChannelInfo) {
-    if (!channel.pubkey) {
-      channel.pubkey = getPublicKey(channel.privkey)
-      const nsec = nip19.nsecEncode(channel.privkey)
-      channel.ident = new ArcadeIdentity(nsec)
-    }
-  }
-
   async decrypt(channel: EncChannelInfo, ev: NostrEvent): Promise<NostrEvent | null> {
-      const dec = await channel.ident?.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
-      if (dec) {
-        ev.content = dec
-        return ev
-      } else {
+      const ident = new ArcadeIdentity(channel.privkey)
+      try {
+        const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
+        if (dec) {
+          ev.content = dec
+          return ev
+        } else {
+          return null
+        }
+      } catch (e) {
+        console.log("decrypt fail", e)
         return null
       }
   }
@@ -147,7 +165,6 @@ class EncChannel {
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
-    this.augmentChannelInfo(channel)
     if (!channel.pubkey) throw new Error('channel id is required');
     
     const lst = await this.pool.list(
