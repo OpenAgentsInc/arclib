@@ -1,7 +1,7 @@
 import { Filter } from 'nostr-tools';
 import Nip28Channel from './channel';
 import { NostrEvent } from './ident';
-import Nip04Manager from './private';
+import PrivateMessageManager from './private';
 
 interface ArcadeEvent {
   content?: string;
@@ -77,10 +77,10 @@ interface ArcadeAction extends ArcadeEvent {
 export class ArcadeListings {
   channel_id: string;
   conn: Nip28Channel;
-  private: Nip04Manager;
+  private: PrivateMessageManager;
   constructor(conn: Nip28Channel, id: string) {
     this.conn = conn;
-    this.private = new Nip04Manager(conn.pool);
+    this.private = new PrivateMessageManager(conn.pool);
     this.channel_id = id;
   }
 

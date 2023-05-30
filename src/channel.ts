@@ -12,7 +12,7 @@ export async function listChannels(
   });
 }
 
-interface ChannelInfo {
+export interface ChannelInfo {
   name: string;
   about: string;
   picture: string;
@@ -72,7 +72,7 @@ class Nip28Channel {
   }
 
   async getMeta(channel_id: string): Promise<ChannelInfo> {
-    const ev = await this.pool.list([{ kinds: [40], ids: [channel_id] }]);
+    const ev = await this.pool.list([{ kinds: [40, 41], ids: [channel_id] }]);
     if (ev.length > 0) {
       return {
         id: ev[0].id,

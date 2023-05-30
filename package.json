@@ -59,6 +59,7 @@
   "devDependencies": {
     "@babel/core": "^7.21.8",
     "@babel/plugin-proposal-class-properties": "^7.18.6",
+    "@babel/plugin-proposal-class-static-block": "^7.21.0",
     "@babel/plugin-proposal-decorators": "^7.22.3",
     "@babel/preset-env": "^7.21.5",
     "@babel/preset-typescript": "^7.21.5",
@@ -87,15 +88,14 @@
     "size-limit": "^8.2.4",
     "ts-jest": "^29.1.0",
     "tslib": "^2.5.0",
-    "typescript": "^5.0.4"
+    "typescript": "^5.0.4",
+    "websocket-polyfill": "^0.0.3"
   },
   "packageManager": "yarn@1.22.19",
   "dependencies": {
-    "@babel/plugin-proposal-class-static-block": "^7.21.0",
+    "@noble/curves": "^1.0.0",
     "@nozbe/watermelondb": "<0.26.0",
-    "async-mutex": "^0.4.0",
     "isomorphic-unfetch": "^4.0.2",
-    "nostr-tools": "^1.10.1",
-    "websocket-polyfill": "^0.0.3"
+    "nostr-tools": "^1.10.1"
   }
 }

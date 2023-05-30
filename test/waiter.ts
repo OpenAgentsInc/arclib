@@ -1,12 +1,25 @@
-function defer() {
-  const deferred: any = {};
-  deferred.promise = new Promise<any>((resolve, reject) => {
+function defer<T, E>() {
+  const deferred: DeferredTmp<T, E> = {} as DeferredTmp<T, E>;
+  deferred.promise = new Promise<T>((resolve, reject) => {
     deferred.resolve = resolve;
     deferred.reject = reject;
   });
-  return deferred;
+  return deferred as Deferred<T, E>;
 }
-export function waiter(delay = 5000) {
+
+interface DeferredTmp<T, E> {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason?: E) => void;
+}
+
+interface Deferred<T, E> {
+  promise: Promise<T>;
+  resolve: (value: T | PromiseLike<T>) => void;
+  reject: (reason: E) => void;
+}
+
+export function waiter<T>(delay = 5000) {
   const deferred = defer();
   const tid = setTimeout(() => {
     deferred.reject('timed out');
@@ -17,18 +30,18 @@ export function waiter(delay = 5000) {
       deferred.resolve(r);
     },
     deferred.promise,
-  ] as [(res: any) => any, Promise<any>];
+  ] as [(res: T) => void, Promise<T>];
 }
 export function sleep(ms: number) {
   return new Promise((resolve) => setTimeout(resolve, ms));
 }
 
-export async function wait_for(
-  cb: () => Promise<any>,
+export async function wait_for<T>(
+  cb: () => Promise<T>,
   ms = 2500.0
-): Promise<any> {
+): Promise<T> {
   let ret;
-  let last_error: any = '';
+  let last_error: unknown = '';
   try {
     ret = await cb();
   } catch (e) {

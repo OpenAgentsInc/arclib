@@ -5,7 +5,7 @@ require('isomorphic-unfetch');
 
 import NostrMini from 'nostrmini';
 
-import { NostrPool, ArcadeIdentity, NostrEvent } from '../src';
+import { NostrPool, ArcadeIdentity } from '../src';
 import { waiter, wait_for, sleep } from './waiter';
 import { connectDb } from '../src/db';
 import { assert } from 'console';

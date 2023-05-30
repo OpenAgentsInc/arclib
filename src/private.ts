@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { Filter, matchFilter, nip04 } from 'nostr-tools';
-import { NostrPool, NostrEvent } from '.';
+import { NostrPool, NostrEvent, UnsignedEvent } from '.';
 
 export async function listChannels(
   pool: NostrPool,
@@ -21,7 +21,7 @@ interface ChannelInfo {
   author?: string;
 }
 
-class Nip04Manager {
+class PrivateMessageManager {
   private pool: NostrPool;
   //  private store: SqliteStore;
 
@@ -47,13 +47,22 @@ class Nip04Manager {
     return ev;
   }
 
+  async sendXX(
+    pubkey: string,
+    content: UnsignedEvent,
+    version = 1
+  ): Promise<NostrEvent> {
+    const ev = await this.pool.ident.nipXXEncrypt(pubkey, content, version)
+    return await this.pool.sendRaw(ev)
+  }
+
   sub(
     callback: (ev: NostrEvent) => void,
     filter: Filter = {},
     eose?: () => Promise<void>,
     pubkey?: string 
   ) {
-    const filter_ex: Filter[] = this.filter(pubkey);
+    const filter_ex: Filter<number>[] = this.filter(pubkey);
     this.pool.sub(
       filter_ex,
       async (ev) => {
@@ -69,7 +78,11 @@ class Nip04Manager {
   async decrypt(ev: NostrEvent) {
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
-        ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
+        if (ev.kind == 99) {
+          ev = await this.pool.ident.nipXXDecrypt(ev);
+        } else {
+          ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
+        }
       } else {
         const pubkey = ev.tags.find((t) => t[0] == 'p')?.[1] as string;
         ev.content = await nip04.decrypt(
@@ -86,7 +99,7 @@ class Nip04Manager {
   }
 
   async list(filter: Filter = {}, db_only = false, pubkey?:string): Promise<NostrEvent[]> {
-    const filter_ex: Filter[] = this.filter(pubkey);
+    const filter_ex: Filter<number>[] = this.filter(pubkey);
     const lst = await this.pool.list(filter_ex, db_only);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
@@ -100,8 +113,8 @@ class Nip04Manager {
   }
 
   public filter(pubkey?: string) {
-    const filter_ex: Filter[] = [
-      { kinds: [4], '#p': [this.pool.ident.pubKey] },
+    const filter_ex: Filter<number>[] = [
+      { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
       filter_ex.push({ kinds: [4], authors: [this.pool.ident.pubKey], '#p': [pubkey] });
@@ -110,4 +123,4 @@ class Nip04Manager {
   }
 }
 
-export default Nip04Manager;
+export default PrivateMessageManager;
