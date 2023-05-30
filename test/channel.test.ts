@@ -43,6 +43,14 @@ describe('Nip28Channel', () => {
     }).rejects.toBeTruthy();
     expect(await channel.getChannel('name')).toBeTruthy();
     expect(await channel.list(group.id)).toHaveLength(0);
+    expect(await channel.getMeta(group.id)).toBeTruthy();
+    console.log('update channel metadata', group.id);
+    const evt = await channel.setMeta(group.id, {
+      name: 'name [updated]',
+      about: 'about [updated]',
+      picture: 'picture [updated]',
+    });
+    console.log('updated event', evt);
     console.log('sending to channel', group.id);
     const ev = await channel.send(group.id, 'hello world');
     console.log('sent event', ev);
