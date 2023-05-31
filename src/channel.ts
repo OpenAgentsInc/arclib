@@ -3,7 +3,7 @@
 import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 import { EncChannel } from './encchannel';
-import { Nip28Channel, Nip28ChannelInfo } from './nip28channel'
+import { Nip28Channel, Nip28ChannelInfo, listChannels } from './nip28channel'
 
 export interface ChannelInput {
   name: string;
@@ -102,6 +102,15 @@ export class ChannelManager {
     } else {
         return await this.nip28.sub(info.channel_id, info.callback, info.filter)
     }
+  }
+
+  async listChannels(db_only?: boolean) : Promise<ChannelInfo[]> {
+    let ret: ChannelInfo[]
+    const enc = await this.enc.listChannels(db_only)
+    ret = enc.map(el=>({is_private: true, ...el} as ChannelInfo))
+    const pub = await listChannels(this.pool, db_only)
+    ret.concat(pub.map(el=>({is_private: false, ...el} as ChannelInfo)))
+    return ret 
   }
 
   async list(
