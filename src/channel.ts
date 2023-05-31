@@ -53,8 +53,8 @@ export class ChannelManager {
     return ret;
   }
 
-  async setMeta(channel_id: string, meta: Nip28ChannelInfo) : Promise<void> {
-      if (isPrivateId(channel_id)) {
+  async setMeta(channel_id: string, is_private: boolean, meta: Nip28ChannelInfo) : Promise<void> {
+      if (is_private) {
         await this.enc.setMeta(channel_id, meta) 
       } else {
         await this.nip28.setMeta(channel_id, meta) 
@@ -70,15 +70,18 @@ export class ChannelManager {
   }
 
   async send(
+    args: {
     channel_id: string,
     content: string,
     replyTo?: string,
-    tags: string[][] = []
+    tags?: string[][],
+    is_private?: boolean
+    }
   ): Promise<NostrEvent> {
-    if (isPrivateId(channel_id)) {
-        return await this.enc.send(channel_id, content, replyTo, tags)
+    if (args.is_private){
+        return await this.enc.send(args.channel_id, args.content, args.replyTo, args.tags)
     } else {
-        return await this.nip28.send(channel_id, content, replyTo, tags)
+        return await this.nip28.send(args.channel_id, args.content, args.replyTo, args.tags)
     }
   }
 
@@ -87,34 +90,32 @@ export class ChannelManager {
   }
 
   async sub(
-    channel_id: string,
-    callback: (ev: NostrEvent) => void,
-    filter: Filter = {},
-    privkey?: string
+    info: {
+      channel_id: string,
+      callback: (ev: NostrEvent) => void,
+      filter?: Filter,
+      privkey?: string
+    }
   ) {
-    if (isPrivateId(channel_id)) {
-        if (!privkey) throw Error("private key needed")
-        return await this.enc.sub({pubkey: channel_id, privkey: privkey}, callback, filter)
+    if (info.privkey) {
+        return await this.enc.sub({pubkey: info.channel_id, privkey: info.privkey}, info.callback, info.filter)
     } else {
-        return await this.nip28.sub(channel_id, callback, filter)
+        return await this.nip28.sub(info.channel_id, info.callback, info.filter)
     }
   }
 
   async list(
-    channel_id: string,
-    filter: Filter = {},
-    db_only = false,
-    privkey?: string
-  ) {
-    if (isPrivateId(channel_id)) {
-        if (!privkey) throw Error("private key needed")
-        return await this.enc.list({pubkey: channel_id, privkey: privkey}, filter, db_only)
+    info: {
+      channel_id: string,
+      filter?: Filter,
+      db_only?: boolean,
+      privkey?: string
+    }
+  ) : Promise<NostrEvent[]> {
+    if (info.privkey) {
+        return await this.enc.list({pubkey: info.channel_id, privkey: info.privkey}, info.filter, info.db_only)
     } else {
-        return await this.nip28.list(channel_id, filter, db_only)
+        return await this.nip28.list(info.channel_id, info.filter, info.db_only)
     }
   }
-}
-
-function isPrivateId(channel_id: string) : boolean {
-  return channel_id.length < 48
 }
