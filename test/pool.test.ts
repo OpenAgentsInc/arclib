@@ -60,7 +60,6 @@ describe('NostrPool', () => {
     // other sender, we catch the event... also goes to the db
     const [resolver, wait] = waiter(4000);
     pool1.sub([{ authors: [ident.pubKey] }], (ev) => {
-      console.log('got event', ev);
       if (ev.content == 'bob1') {
         console.log('resolving waiter');
         resolver(ev);

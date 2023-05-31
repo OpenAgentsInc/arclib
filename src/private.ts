@@ -63,12 +63,16 @@ export class PrivateMessageManager {
     pubkey?: string 
   ) {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
+    console.log("subbing")
     this.pool.sub(
       filter_ex,
-      async (ev) => {
-        const res = matchFilter(filter, ev) ? await this.decrypt(ev) : null;
-        if (res) {
-          callback(ev);
+      (ev) => {
+        console.log("ev is here", ev)
+        if (matchFilter(filter, ev)) {
+            this.decrypt(ev).then((got)=>{
+                if (got) 
+                    callback(got);
+            })
         }
       },
       eose
@@ -79,11 +83,14 @@ export class PrivateMessageManager {
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
+          console.log("decrypt ev", ev)
           ev = await this.pool.ident.nipXXDecrypt(ev);
         } else {
+          console.log("decrypt dm", ev)
           ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
         }
       } else {
+        console.log("decrypt nip4", ev)
         const pubkey = ev.tags.find((t) => t[0] == 'p')?.[1] as string;
         ev.content = await nip04.decrypt(
           this.pool.ident.privKey,

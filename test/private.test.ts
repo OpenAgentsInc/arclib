@@ -66,16 +66,16 @@ test('dm:sub', async () => {
   const dms2 = new PrivateMessageManager(pool2);
 
   const evs: NostrEvent[] = [];
+  await dms1.send(ident2.pubKey, 'yo')
+
   await new Promise<void>((res) => {
-    dms1.send(ident2.pubKey, 'yo').then(() => {
-      dms2.sub(
+    dms2.sub(
         (ev) => {
           evs.push(ev);
+          res()
         },
         {},
-        async () => res()
-      );
-    });
+    );
   });
 
   expect(evs[0].content).toBe('yo');

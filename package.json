@@ -105,6 +105,7 @@
     "@nozbe/watermelondb": "<0.26.0",
     "expo-crypto": "^12.2.2",
     "isomorphic-unfetch": "^4.0.2",
+    "isomorphic-webcrypto": "^2.3.8",
     "nostr-tools": "^1.10.1"
   }
 }

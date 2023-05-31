@@ -21,10 +21,12 @@ import * as crypto from 'isomorphic-webcrypto'
 (async () => {
   // Only needed for crypto.getRandomValues
   // but only wait once, future calls are secure
-  await crypto.ensureSecure();
-  const array = new Uint8Array(1);
-  crypto.getRandomValues(array);
-  const safeValue = array[0];
+  if (crypto.ensureSecure) {
+      await crypto.ensureSecure();
+      const array = new Uint8Array(1);
+      crypto.getRandomValues(array);
+      const safeValue = array[0];
+  }
 })()
 
 const utf8Encoder = new TextEncoder()

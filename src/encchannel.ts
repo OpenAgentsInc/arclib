@@ -30,10 +30,8 @@ export class EncChannel {
       "#p": [this.pool.ident.pubKey]
     }
     const map = await Promise.all((await this.pool.list([filt], db_only)).map(async (ev)=>{
-      console.log("got ev", ev)
       try {
         const inner = await this.pool.ident.nipXXDecrypt(ev)
-        console.log("got inner", inner)
         if (inner.kind == 400) {
           const chinfo: EncChannelInfo = JSON.parse(inner.content)
           chinfo.id = getPublicKey(chinfo.privkey)
@@ -44,7 +42,6 @@ export class EncChannel {
       }
       return null
     }))
-    console.log("got map", map)
 
     const fin = map.filter(ent=>ent != null) as EncChannelInfo[]
     return fin
