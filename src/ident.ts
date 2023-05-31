@@ -94,13 +94,13 @@ export class ArcadeIdentity {
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
-      {name: 'AES-GCM'},
+      {name: 'AES-CBC'},
       false,
       ['encrypt']
     )
 
     const ciphertext = await crypto.subtle.encrypt(
-      {name: 'AES-GCM', iv},
+      {name: 'AES-CBC', iv},
       cryptoKey,
       plaintext
     )
@@ -123,26 +123,22 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
 
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
-    console.log("importing key")
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
-      {name: 'AES-GCM'},
+      {name: 'AES-CBC'},
       false,
       ['decrypt']
     )
 
-    console.log("decrypting ")
     const plaintext = await crypto.subtle.decrypt(
-      {name: 'AES-GCM', iv},
+      {name: 'AES-CBC', iv},
       cryptoKey,
       ciphertext
     )
-    console.log("done", plaintext)
 
     const text = utf8Decoder.decode(plaintext)
 
-    console.log("DECRYPTED", text)
     return text
   }
 

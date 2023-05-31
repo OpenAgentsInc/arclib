@@ -107,10 +107,9 @@ export class ChannelManager {
   async listChannels(db_only?: boolean) : Promise<ChannelInfo[]> {
     let ret: ChannelInfo[]
     const enc = await this.enc.listChannels(db_only)
-    console.log("got encrypted", enc)
     ret = enc.map(el=>({is_private: true, id: el.id, name: el.name, about: el.about, picture: el.picture, author: el.author as string}))
     const pub = await listChannels(this.pool, db_only)
-    ret.concat(pub.map(el=>({is_private: false, ...el} as ChannelInfo)))
+    ret = ret.concat(pub.map(el=>({is_private: false, ...el} as ChannelInfo)))
     return ret 
   }
 
