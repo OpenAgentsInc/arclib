@@ -7,7 +7,7 @@ import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity, NostrEvent } from '../src';
 import { strict as assert } from 'assert';
-import PrivateMessageManager from '../src/private';
+import { PrivateMessageManager } from '../src/private';
 
 const ident1 = ArcadeIdentity.generate();
 const ident2 = ArcadeIdentity.generate();

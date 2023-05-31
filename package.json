@@ -32,7 +32,8 @@
     "trailingComma": "es5"
   },
   "jest": {
-    "testEnvironment": "node"
+    "testEnvironment": "node",
+    "reporters": [["summary", {"summaryThreshold": 1}]]
   },
   "engines": {
     "node": ">=12",

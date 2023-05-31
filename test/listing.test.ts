@@ -7,7 +7,7 @@ import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity, ArcadeListings } from '../src';
 import { strict as assert } from 'assert';
-import Nip28Channel from '../src/channel';
+import { Nip28Channel } from '../src/nip28channel';
 
 // const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
 

@@ -141,5 +141,3 @@ export class Nip28Channel {
     throw new Error('not implemented yet');
   }
 }
-
-export default Nip28Channel;

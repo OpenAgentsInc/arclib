@@ -5,7 +5,7 @@ require('websocket-polyfill');
 import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity } from '../src';
-import Nip28Channel from '../src/channel';
+import { Nip28Channel } from '../src/nip28channel';
 
 // const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
 

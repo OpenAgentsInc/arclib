@@ -21,7 +21,7 @@ interface ChannelInfo {
   author?: string;
 }
 
-class PrivateMessageManager {
+export class PrivateMessageManager {
   private pool: NostrPool;
   //  private store: SqliteStore;
 
@@ -122,5 +122,3 @@ class PrivateMessageManager {
     return filter_ex;
   }
 }
-
-export default PrivateMessageManager;

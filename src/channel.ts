@@ -118,6 +118,3 @@ class ChannelManager {
 function isPrivateId(channel_id: string) : boolean {
   return channel_id.length < 48
 }
-
-export default ChannelManager;
-
