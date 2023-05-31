@@ -16,6 +16,17 @@ import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base'
 import * as utils from '@noble/curves/abstract/utils';
 
+import * as crypto from 'isomorphic-webcrypto'
+
+(async () => {
+  // Only needed for crypto.getRandomValues
+  // but only wait once, future calls are secure
+  await crypto.ensureSecure();
+  const array = new Uint8Array(1);
+  crypto.getRandomValues(array);
+  const safeValue = array[0];
+})()
+
 const utf8Encoder = new TextEncoder()
 const utf8Decoder = new TextDecoder()
 
@@ -75,7 +86,6 @@ export class ArcadeIdentity {
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
     iv = iv??randomBytes(16)
-    console.log("normalized encrypt", normalizedKey, iv)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
     
     const plaintext = utf8Encoder.encode(content)
@@ -109,9 +119,9 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey)
     const normalizedKey = key.slice(1,33)
 
-    console.log("normalized decrypt", normalizedKey, iv)
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
+    console.log("importing key")
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
@@ -120,14 +130,17 @@ async nip04XDecrypt(privkey: string, pubkey: string, data: string): Promise<stri
       ['decrypt']
     )
 
+    console.log("decrypting ")
     const plaintext = await crypto.subtle.decrypt(
       {name: 'AES-GCM', iv},
       cryptoKey,
       ciphertext
     )
+    console.log("done", plaintext)
 
     const text = utf8Decoder.decode(plaintext)
 
+    console.log("DECRYPTED", text)
     return text
   }
 

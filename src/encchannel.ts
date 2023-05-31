@@ -24,19 +24,27 @@ export class EncChannel {
   }
 
   async listChannels(db_only?: boolean): Promise<EncChannelInfo[]> {
+    console.log("listing enc channels")
     const filt = {
       kinds: [99],
       "#p": [this.pool.ident.pubKey]
     }
     const map = await Promise.all((await this.pool.list([filt], db_only)).map(async (ev)=>{
-      const inner = await this.pool.ident.nipXXDecrypt(ev)
-      if (inner.kind == 400) {
-        const chinfo: EncChannelInfo = JSON.parse(inner.content)
-        chinfo.id = getPublicKey(chinfo.privkey)
-        return chinfo
+      console.log("got ev", ev)
+      try {
+        const inner = await this.pool.ident.nipXXDecrypt(ev)
+        console.log("got inner", inner)
+        if (inner.kind == 400) {
+          const chinfo: EncChannelInfo = JSON.parse(inner.content)
+          chinfo.id = getPublicKey(chinfo.privkey)
+          return chinfo
+        }
+      } catch (e) {
+        console.log("failed decrypt, probably spam")
       }
       return null
     }))
+    console.log("got map", map)
 
     const fin = map.filter(ent=>ent != null) as EncChannelInfo[]
     return fin
