@@ -39,6 +39,8 @@ describe('ChannelManager', () => {
     const ev = await echan.send({channel_id: group.id, content: 'hello world', is_private: true});
     console.log('sent event', ev);
     expect(await echan.list({channel_id: group.id, privkey: group.privkey})).toHaveLength(1);
+    console.log(await echan.listChannels())
+    expect((await echan.listChannels())[0].id).toEqual(group.id)
     await pool.close();
   });
 

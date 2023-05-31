@@ -38,7 +38,7 @@ export class ChannelManager {
         const res = await this.enc.createPrivate(meta, [])
         ret = {
           ...meta,
-          id: res.pubkey,
+          id: res.id,
           author: this.pool.ident.pubKey,
           privkey: res.privkey
         }
@@ -63,7 +63,7 @@ export class ChannelManager {
 
   async getMeta(channel_id: string, privkey?: string, db_only = false): Promise<ChannelInfo> {
       if (privkey) {
-        return {is_private: true, ...await this.enc.getMeta({pubkey: channel_id, privkey: privkey})} as ChannelInfo
+        return {is_private: true, ...await this.enc.getMeta({id: channel_id, privkey: privkey})} as ChannelInfo
       } else {
         return {is_private: false, ...await this.nip28.getMeta(channel_id)} as ChannelInfo
       }
@@ -98,7 +98,7 @@ export class ChannelManager {
     }
   ) {
     if (info.privkey) {
-        return await this.enc.sub({pubkey: info.channel_id, privkey: info.privkey}, info.callback, info.filter)
+        return await this.enc.sub({id: info.channel_id, privkey: info.privkey}, info.callback, info.filter)
     } else {
         return await this.nip28.sub(info.channel_id, info.callback, info.filter)
     }
@@ -107,7 +107,7 @@ export class ChannelManager {
   async listChannels(db_only?: boolean) : Promise<ChannelInfo[]> {
     let ret: ChannelInfo[]
     const enc = await this.enc.listChannels(db_only)
-    ret = enc.map(el=>({is_private: true, ...el} as ChannelInfo))
+    ret = enc.map(el=>({is_private: true, id: el.id, name: el.name, about: el.about, picture: el.picture, author: el.author as string}))
     const pub = await listChannels(this.pool, db_only)
     ret.concat(pub.map(el=>({is_private: false, ...el} as ChannelInfo)))
     return ret 
@@ -122,7 +122,7 @@ export class ChannelManager {
     }
   ) : Promise<NostrEvent[]> {
     if (info.privkey) {
-        return await this.enc.list({pubkey: info.channel_id, privkey: info.privkey}, info.filter, info.db_only)
+        return await this.enc.list({id: info.channel_id, privkey: info.privkey}, info.filter, info.db_only)
     } else {
         return await this.nip28.list(info.channel_id, info.filter, info.db_only)
     }

@@ -39,7 +39,7 @@ describe('EncChannel', () => {
     expect(await echan.list(group)).toHaveLength(0);
     expect(await echan.getChannelByName('name')).toBeTruthy();
     console.log('sending to channel', group.id);
-    const ev = await echan.send(group.pubkey as string, 'hello world');
+    const ev = await echan.send(group.id, 'hello world');
     console.log('sent event', ev);
     expect(await echan.list(group)).toHaveLength(1);
     await pool.close();
@@ -56,8 +56,8 @@ describe('EncChannel', () => {
     },
       []
     );
-    await echan.setMeta(group.pubkey, {name: "bob", about: "bob", picture: "bob"})
-    await echan.setMeta(group.pubkey, {name: "bob2", about: "bob2", picture: "bob2"})
+    await echan.setMeta(group.id, {name: "bob", about: "bob", picture: "bob"})
+    await echan.setMeta(group.id, {name: "bob2", about: "bob2", picture: "bob2"})
     expect(await echan.getMeta(group)).toEqual({name: "bob2", about: "bob2", picture: "bob2"})
     await pool.close();
   });

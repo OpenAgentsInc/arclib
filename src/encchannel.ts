@@ -5,8 +5,8 @@ import { NostrPool, NostrEvent, ArcadeIdentity } from '.';
 import { Nip28ChannelInfo } from './nip28channel'
 
 export interface EncChannelInfo extends Nip28ChannelInfo {
+  id: string
   privkey: string
-  pubkey: string
 }
 
 export class EncChannel {
@@ -32,6 +32,7 @@ export class EncChannel {
       const inner = await this.pool.ident.nipXXDecrypt(ev)
       if (inner.kind == 400) {
         const chinfo: EncChannelInfo = JSON.parse(inner.content)
+        chinfo.id = getPublicKey(chinfo.privkey)
         return chinfo
       }
       return null
@@ -53,7 +54,7 @@ export class EncChannel {
   }
 
   async getChannelById(channel_pubkey: string, db_only = false): Promise<EncChannelInfo | null> {
-    return (await this.listChannels(db_only)).filter(ev=>ev.pubkey==channel_pubkey)[0]
+    return (await this.listChannels(db_only)).filter(ch=>ch.id==channel_pubkey)[0]
   }
 
   async createPrivate(meta: Nip28ChannelInfo, member_pubkeys: string[]): Promise<EncChannelInfo> {
@@ -61,7 +62,7 @@ export class EncChannel {
     const epub = getPublicKey(epriv)
     const set = new Set(member_pubkeys)
     set.add(this.pool.ident.pubKey)
-    const xmeta: EncChannelInfo = {privkey: epriv, pubkey: epub, ...meta}
+    const xmeta: EncChannelInfo = {privkey: epriv, ...meta, id: epub, author: this.pool.ident.pubKey}
     await Promise.all(Array.from(set).map(async (pubkey)=>{
       const inner =  {
         kind: 400,
@@ -72,7 +73,7 @@ export class EncChannel {
       await this.pool.sendRaw(enc)
     }))
 
-    this._knownChannels.push({ ...meta, id: epub, author: this.pool.ident.pubKey, privkey: epriv, pubkey: epub });
+    this._knownChannels.push({ ...meta, id: epub, author: this.pool.ident.pubKey, privkey: epriv });
     return xmeta;
   }
 
@@ -88,9 +89,9 @@ export class EncChannel {
     return await this.pool.sendRaw(ev);
   }
 
-  async getMeta(info: {pubkey: string, privkey: string, db_only?: boolean}): Promise<Nip28ChannelInfo> {
+  async getMeta(info: {id: string, privkey: string, db_only?: boolean}): Promise<Nip28ChannelInfo> {
     const lst = await this.pool.list(
-      [{ kinds: [403], "#p": [info.pubkey as string] }],
+      [{ kinds: [403], "#p": [info.id as string] }],
       info.db_only
     );
     const map = await Promise.all(lst.map(async (ev) => {
@@ -130,13 +131,13 @@ export class EncChannel {
   }
 
   async sub(
-    channel: {pubkey: string, privkey:string},
+    channel: {id: string, privkey:string},
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}
   ) {
-    if (!channel.pubkey) throw new Error('channel id is required');
+    if (!channel.id) throw new Error('channel id is required');
     return this.pool.sub(
-      [{ kinds: [402], "#p": [channel.pubkey], ...filter }],
+      [{ kinds: [402], "#p": [channel.id], ...filter }],
       async (ev) => {
         const dec = await this.decrypt(channel, ev)
         if (dec)
@@ -145,7 +146,7 @@ export class EncChannel {
     );
   }
 
-  async decrypt(channel: {pubkey: string, privkey: string}, ev: NostrEvent): Promise<NostrEvent | null> {
+  async decrypt(channel: {id: string, privkey: string}, ev: NostrEvent): Promise<NostrEvent | null> {
       const ident = new ArcadeIdentity(channel.privkey)
       try {
         const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
@@ -162,14 +163,14 @@ export class EncChannel {
   }
 
   async list(
-    channel: {pubkey: string, privkey:string},
+    channel: {id: string, privkey:string},
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
-    if (!channel.pubkey) throw new Error('channel id is required');
+    if (!channel.id) throw new Error('channel id is required');
     
     const lst = await this.pool.list(
-      [{ kinds: [402], "#p": [channel.pubkey], ...filter }],
+      [{ kinds: [402], "#p": [channel.id], ...filter }],
       db_only
     );
 
