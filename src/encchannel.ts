@@ -2,14 +2,14 @@
 
 import { Filter, generatePrivateKey, getPublicKey } from 'nostr-tools';
 import { NostrPool, NostrEvent, ArcadeIdentity } from '.';
-import {ChannelInfo} from './channel'
+import { Nip28ChannelInfo } from './nip28channel'
 
-interface EncChannelInfo extends ChannelInfo {
+export interface EncChannelInfo extends Nip28ChannelInfo {
   privkey: string
   pubkey: string
 }
 
-class EncChannel {
+export class EncChannel {
   public pool: NostrPool;
   private _knownChannels: EncChannelInfo[] = [];
   //  private store: SqliteStore;
@@ -56,7 +56,7 @@ class EncChannel {
     return (await this.listChannels(db_only)).filter(ev=>ev.pubkey==channel_pubkey)[0]
   }
 
-  async createPrivate(meta: ChannelInfo, member_pubkeys: string[]): Promise<EncChannelInfo> {
+  async createPrivate(meta: Nip28ChannelInfo, member_pubkeys: string[]): Promise<EncChannelInfo> {
     const epriv = generatePrivateKey()
     const epub = getPublicKey(epriv)
     const set = new Set(member_pubkeys)
@@ -76,7 +76,7 @@ class EncChannel {
     return xmeta;
   }
 
-  async setMeta(channel_pubkey: string, meta: ChannelInfo) {
+  async setMeta(channel_pubkey: string, meta: Nip28ChannelInfo) {
     const epriv = generatePrivateKey()
     const tmp_ident = new ArcadeIdentity(epriv) 
     const message = {
@@ -88,10 +88,10 @@ class EncChannel {
     return await this.pool.sendRaw(ev);
   }
 
-  async getMeta(info: EncChannelInfo, db_only = false): Promise<ChannelInfo> {
+  async getMeta(info: {pubkey: string, privkey: string, db_only?: boolean}): Promise<Nip28ChannelInfo> {
     const lst = await this.pool.list(
       [{ kinds: [403], "#p": [info.pubkey as string] }],
-      db_only
+      info.db_only
     );
     const map = await Promise.all(lst.map(async (ev) => {
       console.log("decrypting", info, ev)
@@ -101,8 +101,9 @@ class EncChannel {
     const red = filt.length ? filt.reduce((_acc, curr) => {
       return curr;
     }) : null;
-    const {name, about, picture} = info
-    return red ? JSON.parse(red.content) : {name, about, picture};
+    if (!red)
+      throw Error("no meta")
+    return JSON.parse(red.content)
   }
 
   async send(
@@ -129,7 +130,7 @@ class EncChannel {
   }
 
   async sub(
-    channel: EncChannelInfo,
+    channel: {pubkey: string, privkey:string},
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}
   ) {
@@ -144,7 +145,7 @@ class EncChannel {
     );
   }
 
-  async decrypt(channel: EncChannelInfo, ev: NostrEvent): Promise<NostrEvent | null> {
+  async decrypt(channel: {pubkey: string, privkey: string}, ev: NostrEvent): Promise<NostrEvent | null> {
       const ident = new ArcadeIdentity(channel.privkey)
       try {
         const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
@@ -161,7 +162,7 @@ class EncChannel {
   }
 
   async list(
-    channel: EncChannelInfo,
+    channel: {pubkey: string, privkey:string},
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
