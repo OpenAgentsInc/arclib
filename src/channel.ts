@@ -3,7 +3,7 @@
 import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 import { EncChannel } from './encchannel';
-import { Nip28Channel } from './nip28channel'
+import { Nip28Channel, Nip28ChannelInfo } from './nip28channel'
 
 export interface ChannelInput {
   name: string;
@@ -18,7 +18,7 @@ export interface ChannelInfo extends ChannelInput {
   privkey?: string;
 }
 
-class ChannelManager {
+export class ChannelManager {
   public pool: NostrPool;
   private _knownChannels: ChannelInfo[] = [];
   enc: EncChannel;
@@ -53,8 +53,8 @@ class ChannelManager {
     return ret;
   }
 
-  async setMeta(channel_id: string, meta: ChannelInfo) : Promise<void> {
-      if (meta.is_private) {
+  async setMeta(channel_id: string, meta: Nip28ChannelInfo) : Promise<void> {
+      if (isPrivateId(channel_id)) {
         await this.enc.setMeta(channel_id, meta) 
       } else {
         await this.nip28.setMeta(channel_id, meta) 
