@@ -152,8 +152,8 @@ class EncChannel {
         const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
         const js = JSON.parse(dec)
         if (dec) {
-          ev.content = dec.content
-          ev.tags = dec.tags
+          ev.content = js.content
+          ev.tags = js.tags
           return ev
         } else {
           return null
