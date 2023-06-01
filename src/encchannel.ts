@@ -150,6 +150,7 @@ class EncChannel {
       const ident = new ArcadeIdentity(channel.privkey)
       try {
         const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
+        const js = JSON.parse(dec)
         if (dec) {
           ev.content = dec.content
           ev.tags = dec.tags
