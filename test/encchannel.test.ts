@@ -42,6 +42,18 @@ describe('EncChannel', () => {
     const ev = await echan.send(group.pubkey as string, 'hello world');
     console.log('sent event', ev);
     expect(await echan.list(group)).toHaveLength(1);
+
+    const bob = ArcadeIdentity.generate();
+    const pool2 = new NostrPool(bob);
+    await pool2.setRelays(relays);
+    const echan2 = new EncChannel(pool2);
+    
+    expect(await echan2.listChannels()).toHaveLength(0);
+    
+    await echan.invite({...group, members: [bob.pubKey]})
+    
+    expect(await echan2.listChannels()).toHaveLength(1);
+
     await pool.close();
   });
 

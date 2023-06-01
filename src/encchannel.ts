@@ -9,6 +9,10 @@ interface EncChannelInfo extends ChannelInfo {
   pubkey: string
 }
 
+interface InviteArgs extends EncChannelInfo {
+  members: string[]
+}
+
 class EncChannel {
   public pool: NostrPool;
   private _knownChannels: EncChannelInfo[] = [];
@@ -74,6 +78,20 @@ class EncChannel {
 
     this._knownChannels.push({ ...meta, id: epub, author: this.pool.ident.pubKey, privkey: epriv, pubkey: epub });
     return xmeta;
+  }
+
+  async invite(args: InviteArgs): Promise<void> {
+    const xmeta: Omit<InviteArgs, 'members'> & {members?: string[]} = {...args}
+    delete xmeta.members
+    await Promise.all(Array.from(args.members).map(async (pubkey)=>{
+      const inner =  {
+        kind: 400,
+        content: JSON.stringify(xmeta),
+        tags: []
+      }
+      const enc = await this.pool.ident.nipXXEncrypt(pubkey, inner, 1)
+      await this.pool.sendRaw(enc)
+    }))
   }
 
   async setMeta(channel_pubkey: string, meta: ChannelInfo) {
