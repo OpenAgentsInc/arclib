@@ -118,10 +118,12 @@ class EncChannel {
       oth.push(['e', replyTo, this.pool.relays[0], 'reply']);
     }
     const epriv = generatePrivateKey()
-    const tmp_ident = new ArcadeIdentity(epriv) 
+    const tmp_ident = new ArcadeIdentity(epriv)
+    // skipping kind here, cuz it makes indexing suck
+    const inner = {content: content, tags: tags}
     const message = {
       kind: 402,
-      content: await this.pool.ident.nip04XEncrypt(epriv, channel_pubkey, content, 1),
+      content: await this.pool.ident.nip04XEncrypt(epriv, channel_pubkey, JSON.stringify(inner), 1),
       tags: [['p', channel_pubkey]]
     }
     const ev = await tmp_ident.signEvent(message)
@@ -149,7 +151,8 @@ class EncChannel {
       try {
         const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
         if (dec) {
-          ev.content = dec
+          ev.content = dec.content
+          ev.tags = dec.tags
           return ev
         } else {
           return null
