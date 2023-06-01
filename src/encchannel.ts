@@ -94,8 +94,7 @@ class EncChannel {
       db_only
     );
     const map = await Promise.all(lst.map(async (ev) => {
-      console.log("decrypting", info, ev)
-      return await this.decrypt(info, ev);
+      return await this.decrypt(info, ev, false);
     }));
     const filt = map.filter((ev) => ev != null)
     const red = filt.length ? filt.reduce((_acc, curr) => {
@@ -146,14 +145,18 @@ class EncChannel {
     );
   }
 
-  async decrypt(channel: EncChannelInfo, ev: NostrEvent): Promise<NostrEvent | null> {
+  async decrypt(channel: EncChannelInfo, ev: NostrEvent, unwrap=true): Promise<NostrEvent | null> {
       const ident = new ArcadeIdentity(channel.privkey)
       try {
         const dec = await ident.nip04XDecrypt(channel.privkey, ev.pubkey, ev.content)
-        const js = JSON.parse(dec)
         if (dec) {
-          ev.content = js.content
-          ev.tags = js.tags
+          if (unwrap) {
+              const js = JSON.parse(dec)
+              ev.content = js.content
+              ev.tags = js.tags
+          } else {
+              ev.content = dec
+          }
           return ev
         } else {
           return null
