@@ -151,7 +151,7 @@ export class EncChannel {
     return await this.pool.sendRaw(ev);
   }
 
-  async getMeta(info: EncChannelInfo): Promise<Nip28ChannelInfo> {
+  async getMeta(info: any): Promise<Nip28ChannelInfo> {
     const lst = await this.pool.list(
       [{ kinds: [403], '#p': [info.id as string] }],
       info.db_only
@@ -202,7 +202,7 @@ export class EncChannel {
   }
 
   async sub(
-    channel: EncChannelInfo,
+    channel: any,
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}
   ) {
@@ -247,7 +247,7 @@ export class EncChannel {
   }
 
   async list(
-    channel: EncChannelInfo,
+    channel: any,
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
