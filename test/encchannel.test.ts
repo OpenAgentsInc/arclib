@@ -55,7 +55,8 @@ describe('EncChannel', () => {
 
     expect(await echan2.listChannels()).toHaveLength(1);
 
-    await pool.close();
+    pool.close();
+    pool2.close();
   });
 
   it('can meta', async () => {
@@ -85,6 +86,6 @@ describe('EncChannel', () => {
       about: 'bob2',
       picture: 'bob2',
     });
-    await pool.close();
+    pool.close();
   });
 });
