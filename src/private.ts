@@ -21,7 +21,7 @@ interface ChannelInfo {
   author?: string;
 }
 
-class PrivateMessageManager {
+export class PrivateMessageManager {
   private pool: NostrPool;
   //  private store: SqliteStore;
 
@@ -52,23 +52,26 @@ class PrivateMessageManager {
     content: UnsignedEvent,
     version = 1
   ): Promise<NostrEvent> {
-    const ev = await this.pool.ident.nipXXEncrypt(pubkey, content, version)
-    return await this.pool.sendRaw(ev)
+    const ev = await this.pool.ident.nipXXEncrypt(pubkey, content, version);
+    return await this.pool.sendRaw(ev);
   }
 
   sub(
     callback: (ev: NostrEvent) => void,
     filter: Filter = {},
     eose?: () => Promise<void>,
-    pubkey?: string 
+    pubkey?: string
   ) {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
+    console.log('subbing');
     this.pool.sub(
       filter_ex,
-      async (ev) => {
-        const res = matchFilter(filter, ev) ? await this.decrypt(ev) : null;
-        if (res) {
-          callback(ev);
+      (ev) => {
+        console.log('ev is here', ev);
+        if (matchFilter(filter, ev)) {
+          this.decrypt(ev).then((got) => {
+            if (got) callback(got);
+          });
         }
       },
       eose
@@ -79,11 +82,17 @@ class PrivateMessageManager {
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
+          console.log('decrypt ev', ev);
           ev = await this.pool.ident.nipXXDecrypt(ev);
         } else {
-          ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
+          console.log('decrypt dm', ev);
+          ev.content = await this.pool.ident.nip04Decrypt(
+            ev.pubkey,
+            ev.content
+          );
         }
       } else {
+        console.log('decrypt nip4', ev);
         const pubkey = ev.tags.find((t) => t[0] == 'p')?.[1] as string;
         ev.content = await nip04.decrypt(
           this.pool.ident.privKey,
@@ -98,12 +107,16 @@ class PrivateMessageManager {
     }
   }
 
-  async list(filter: Filter = {}, db_only = false, pubkey?:string): Promise<NostrEvent[]> {
+  async list(
+    filter: Filter = {},
+    db_only = false,
+    pubkey?: string
+  ): Promise<NostrEvent[]> {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
     const lst = await this.pool.list(filter_ex, db_only);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
-        return matchFilter(filter, ev) ? await this.decrypt(ev) : null
+        return matchFilter(filter, ev) ? await this.decrypt(ev) : null;
       })
     );
 
@@ -117,10 +130,12 @@ class PrivateMessageManager {
       { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
-      filter_ex.push({ kinds: [4], authors: [this.pool.ident.pubKey], '#p': [pubkey] });
+      filter_ex.push({
+        kinds: [4],
+        authors: [this.pool.ident.pubKey],
+        '#p': [pubkey],
+      });
     }
     return filter_ex;
   }
 }
-
-export default PrivateMessageManager;
