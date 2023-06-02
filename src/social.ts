@@ -39,17 +39,27 @@ export class ArcadeSocial {
   private ident: ArcadeIdentity;
   public socialGraph: SocialGraph = {};
   public iteration = 0;
+  public paused = false;
+  private pausedOnKey: string | null = null;
+  private pausedOnDegree = 1;
   constructor(pool: NostrPool, ident: ArcadeIdentity) {
     this.pool = pool;
     this.ident = ident;
-    this.generate(ident);
+    this.start();
   }
   /**
-   * Kick off social graph generation process
-   * @param ident ArcadeIdentity
+   * Stop social graph generation process and save where we left off.
    */
-  generate(ident: ArcadeIdentity): void {
-    this.extendGraph(ident.pubKey);
+  pause(): void {
+    this.paused = true;
+  }
+  /**
+   * Start or restart graph generation process.
+   */
+  start(): void {
+    this.paused = false;
+    // start or restart
+    this.extendGraph(this.pausedOnKey || this.ident.pubKey, this.pausedOnDegree);
   }
   /**
    * Provide a public key to extend the social graph by one degree. Hey that rhymes!
@@ -57,6 +67,13 @@ export class ArcadeSocial {
    * @param degree the current degree of separation from the user in this iteration
    */
   extendGraph(pubkey: PublicKey, degree = 1): void {
+    // check if paused
+    if (this.paused) {
+      // save where we left off for when we restart.
+      this.pausedOnKey = pubkey;
+      this.pausedOnDegree = degree;
+      return;
+    }
     const kind3: EventTemplate[] = [];
     const filter: Filter<number> = { kinds: [3], authors: [pubkey] };
     this.pool.sub([filter], event => kind3.push(event), () => {
@@ -70,7 +87,7 @@ export class ArcadeSocial {
       return Promise.resolve();
     });
   }
-  buildGraph(pubkey: PublicKey, contacts: string[][], degree: number): void {
+  async buildGraph(pubkey: PublicKey, contacts: string[][], degree: number): Promise<void> {
     // begin building social graph
     // iterate over contacts in most recent kind3
     // and store each pubkey in a flat socialGraph relative to the user.
@@ -83,6 +100,7 @@ export class ArcadeSocial {
         if (Object.prototype.hasOwnProperty.call(this.socialGraph, contactPubkey)) {
           // this pubkey is already in our socialGraph.
           // increase its fwf (friends who follow) count
+          // the fwf metric is only useful for the user's own social graph, but that's ok because so are the other metrics (like degree).
           this.socialGraph[contactPubkey].fwf = (this.socialGraph[contactPubkey].fwf || 0) + 1
         } else {
           // this pubkey is not in our socialGraph. Add it.
