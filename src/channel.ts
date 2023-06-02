@@ -71,12 +71,15 @@ export class ChannelManager {
     if (privkey) {
       return {
         is_private: true,
-        ...(await this.enc.getMeta({ id: channel_id, privkey: privkey })),
+        ...(await this.enc.getMeta({
+          id: channel_id,
+          privkey: privkey,
+        })),
       } as ChannelInfo;
     } else {
       return {
         is_private: false,
-        ...(await this.nip28.getMeta(channel_id)),
+        ...(await this.nip28.getMeta(channel_id, db_only)),
       } as ChannelInfo;
     }
   }
@@ -117,7 +120,10 @@ export class ChannelManager {
   }) {
     if (info.privkey) {
       return await this.enc.sub(
-        { id: info.channel_id, privkey: info.privkey },
+        {
+          id: info.channel_id,
+          privkey: info.privkey,
+        },
         info.callback,
         info.filter
       );
@@ -152,7 +158,10 @@ export class ChannelManager {
   }): Promise<NostrEvent[]> {
     if (info.privkey) {
       return await this.enc.list(
-        { id: info.channel_id, privkey: info.privkey },
+        {
+          id: info.channel_id,
+          privkey: info.privkey,
+        },
         info.filter,
         info.db_only
       );

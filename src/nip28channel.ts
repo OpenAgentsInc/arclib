@@ -71,8 +71,11 @@ export class Nip28Channel {
     return ev;
   }
 
-  async getMeta(channel_id: string): Promise<Nip28ChannelInfo> {
-    const ev = await this.pool.list([{ kinds: [41], '#e': [channel_id] }]);
+  async getMeta(channel_id: string, db_only = true): Promise<Nip28ChannelInfo> {
+    const ev = await this.pool.list(
+      [{ kinds: [40], ids: [channel_id] }],
+      db_only
+    );
     if (ev.length > 0) {
       return {
         id: ev[0].id,
