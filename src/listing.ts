@@ -1,7 +1,7 @@
 import { Filter } from 'nostr-tools';
-import Nip28Channel from './channel';
+import { Nip28Channel } from './nip28channel';
 import { NostrEvent } from './ident';
-import PrivateMessageManager from './private';
+import { PrivateMessageManager } from './private';
 
 interface ArcadeEvent {
   content?: string;

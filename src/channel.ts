@@ -1,145 +1,163 @@
-/* eslint-disable @typescript-eslint/no-unused-vars */
-
 import { Filter } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
+import { EncChannel } from './encchannel';
+import { Nip28Channel, Nip28ChannelInfo, listChannels } from './nip28channel';
 
-export async function listChannels(
-  pool: NostrPool,
-  db_only = false
-): Promise<ChannelInfo[]> {
-  return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
-    return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
-  });
-}
-
-export interface ChannelInfo {
+export interface ChannelInput {
   name: string;
   about: string;
   picture: string;
-  id?: string;
-  author?: string;
+  is_private: boolean;
 }
 
-class Nip28Channel {
+export interface ChannelInfo extends ChannelInput {
+  id: string;
+  author: string;
+  privkey?: string;
+}
+
+export class ChannelManager {
   public pool: NostrPool;
   private _knownChannels: ChannelInfo[] = [];
+  enc: EncChannel;
+  nip28: Nip28Channel;
   //  private store: SqliteStore;
 
   constructor(pool: NostrPool) {
     this.pool = pool;
+    this.enc = new EncChannel(pool);
+    this.nip28 = new Nip28Channel(pool);
   }
 
-  addEventCallback(callback: (event: NostrEvent) => void): void {
-    // should get called by the local store
-    throw new Error('not implemented');
-  }
+  async create(meta: ChannelInput): Promise<ChannelInfo> {
+    let ret: ChannelInfo;
 
-  async knownChannels(force?: boolean): Promise<ChannelInfo[]> {
-    if (!this._knownChannels || force) {
-      this._knownChannels = await listChannels(this.pool);
-    }
-    return this._knownChannels;
-  }
-
-  async getChannel(name: string): Promise<ChannelInfo | null> {
-    const ret = (await this.knownChannels()).filter((ent: ChannelInfo) => {
-      return ent.name == name;
-    })[0];
-    return ret ?? null;
-  }
-
-  async create(meta: ChannelInfo): Promise<NostrEvent> {
-    if (await this.getChannel(meta.name)) {
-      throw new Error(`A channel with name '${meta.name}' already exists.`);
-    }
-    const ev = await this.pool.send({
-      kind: 40,
-      content: JSON.stringify(meta),
-      tags: [['d', meta.name]],
-    });
-    this._knownChannels.push({ ...meta, id: ev.id, author: ev.pubkey });
-    return ev;
-  }
-
-  async setMeta(channel_id: string, meta: ChannelInfo) {
-    if (!channel_id) throw new Error('channel id is required');
-    const ev = await this.pool.send({
-      kind: 41,
-      content: JSON.stringify(meta),
-      tags: [['e', channel_id, this.pool.relays[0]]],
-    });
-    return ev;
-  }
-
-  async getMeta(channel_id: string): Promise<ChannelInfo> {
-    const ev = await this.pool.list([{ kinds: [40, 41], ids: [channel_id] }]);
-    if (ev.length > 0) {
-      return {
-        id: ev[0].id,
-        author: ev[0].pubkey,
-        ...JSON.parse(ev[0].content),
+    if (meta.is_private) {
+      const res = await this.enc.createPrivate(meta, []);
+      ret = {
+        ...meta,
+        id: res.id,
+        author: this.pool.ident.pubKey,
+        privkey: res.privkey,
       };
     } else {
-      throw new Error(`Channel not found`);
+      const ev = await this.nip28.create(meta);
+      ret = {
+        ...meta,
+        id: ev.id,
+        author: ev.pubkey,
+      };
+    }
+    return ret;
+  }
+
+  async setMeta(
+    channel_id: string,
+    is_private: boolean,
+    meta: Nip28ChannelInfo
+  ): Promise<void> {
+    if (is_private) {
+      await this.enc.setMeta(channel_id, meta);
+    } else {
+      await this.nip28.setMeta(channel_id, meta);
     }
   }
 
-  async send(
+  async getMeta(
     channel_id: string,
-    content: string,
-    replyTo?: string,
-    tags: string[][] = []
-  ): Promise<NostrEvent> {
-    if (!channel_id) throw new Error('channel id is required');
-    const oth: string[][] = [];
-    if (replyTo) {
-      oth.push(['e', replyTo, this.pool.relays[0], 'reply']);
+    privkey?: string,
+    db_only = false
+  ): Promise<ChannelInfo> {
+    if (privkey) {
+      return {
+        is_private: true,
+        ...(await this.enc.getMeta({ id: channel_id, privkey: privkey })),
+      } as ChannelInfo;
+    } else {
+      return {
+        is_private: false,
+        ...(await this.nip28.getMeta(channel_id)),
+      } as ChannelInfo;
     }
-    const ev = await this.pool.send({
-      kind: 42,
-      content: content,
-      tags: [['e', channel_id, this.pool.relays[0], 'root'], ...oth, ...tags],
-    });
-    return ev;
+  }
+
+  async send(args: {
+    channel_id: string;
+    content: string;
+    replyTo?: string;
+    tags?: string[][];
+    is_private?: boolean;
+  }): Promise<NostrEvent> {
+    if (args.is_private) {
+      return await this.enc.send(
+        args.channel_id,
+        args.content,
+        args.replyTo,
+        args.tags
+      );
+    } else {
+      return await this.nip28.send(
+        args.channel_id,
+        args.content,
+        args.replyTo,
+        args.tags
+      );
+    }
   }
 
   async delete(event_id: string, tags: string[][] = []): Promise<NostrEvent> {
-    if (!event_id) throw new Error('event id is required');
-    const ev = await this.pool.send({
-      kind: 5,
-      content: '',
-      tags: [['e', event_id]],
-    });
-    return ev;
+    return await this.nip28.delete(event_id, tags);
   }
 
-  async sub(
-    channel_id: string,
-    callback: (ev: NostrEvent) => void,
-    filter: Filter = {}
-  ) {
-    if (!channel_id) throw new Error('channel id is required');
-    return this.pool.sub(
-      [{ kinds: [42], '#e': [channel_id], ...filter }],
-      callback
+  async sub(info: {
+    channel_id: string;
+    callback: (ev: NostrEvent) => void;
+    filter?: Filter;
+    privkey?: string;
+  }) {
+    if (info.privkey) {
+      return await this.enc.sub(
+        { id: info.channel_id, privkey: info.privkey },
+        info.callback,
+        info.filter
+      );
+    } else {
+      return await this.nip28.sub(info.channel_id, info.callback, info.filter);
+    }
+  }
+
+  async listChannels(db_only?: boolean): Promise<ChannelInfo[]> {
+    let ret: ChannelInfo[];
+    const enc = await this.enc.listChannels(db_only);
+    ret = enc.map((el) => ({
+      is_private: true,
+      id: el.id,
+      name: el.name,
+      about: el.about,
+      picture: el.picture,
+      author: el.author as string,
+    }));
+    const pub = await listChannels(this.pool, db_only);
+    ret = ret.concat(
+      pub.map((el) => ({ is_private: false, ...el } as ChannelInfo))
     );
+    return ret;
   }
 
-  async list(
-    channel_id: string,
-    filter: Filter = {},
-    db_only = false
-  ): Promise<NostrEvent[]> {
-    if (!channel_id) throw new Error('channel id is required');
-    return this.pool.list(
-      [{ kinds: [42], '#e': [channel_id], ...filter }],
-      db_only
-    );
-  }
-
-  async muteUser(params: { content: string; pubkey: string }): Promise<void> {
-    throw new Error('not implemented yet');
+  async list(info: {
+    channel_id: string;
+    filter?: Filter;
+    db_only?: boolean;
+    privkey?: string;
+  }): Promise<NostrEvent[]> {
+    if (info.privkey) {
+      return await this.enc.list(
+        { id: info.channel_id, privkey: info.privkey },
+        info.filter,
+        info.db_only
+      );
+    } else {
+      return await this.nip28.list(info.channel_id, info.filter, info.db_only);
+    }
   }
 }
-
-export default Nip28Channel;

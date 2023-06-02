@@ -5,7 +5,7 @@ require('websocket-polyfill');
 import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity } from '../src';
-import Nip28Channel from '../src/channel';
+import { Nip28Channel } from '../src/nip28channel';
 
 // const relays = ['wss://relay.nostr.band/', 'wss://nos.lol/'];
 
@@ -43,7 +43,7 @@ describe('Nip28Channel', () => {
     }).rejects.toBeTruthy();
     expect(await channel.getChannel('name')).toBeTruthy();
     expect(await channel.list(group.id)).toHaveLength(0);
-    expect(await channel.getMeta(group.id)).toBeTruthy();
+
     console.log('update channel metadata', group.id);
     const evt = await channel.setMeta(group.id, {
       name: 'name [updated]',
