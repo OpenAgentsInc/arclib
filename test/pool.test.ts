@@ -26,7 +26,7 @@ afterAll(async () => {
 describe('NostrPool', () => {
   it('can send and receive', async () => {
     const pool = new NostrPool(ident);
-    await pool.setAndCheckRelays(relays, [1, 11]);
+    await pool.setRelays(relays);
     const [resolver, wait] = waiter(9000);
     pool.addEventCallback((ev) => {
       resolver(ev);
