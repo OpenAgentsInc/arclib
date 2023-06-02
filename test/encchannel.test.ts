@@ -71,6 +71,11 @@ describe('EncChannel', () => {
       },
       []
     );
+    expect(await echan.getMeta(group)).toEqual({
+      name: 'name',
+      about: 'about',
+      picture: 'picture',
+    });
     await echan.setMeta(group.id, {
       name: 'bob',
       about: 'bob',

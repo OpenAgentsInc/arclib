@@ -151,7 +151,7 @@ export class EncChannel {
     return await this.pool.sendRaw(ev);
   }
 
-  async getMeta(info: any): Promise<Nip28ChannelInfo> {
+  async getMeta(info: {id: string, privkey: string, db_only?: boolean}): Promise<Nip28ChannelInfo> {
     const lst = await this.pool.list(
       [{ kinds: [403], '#p': [info.id as string] }],
       info.db_only
@@ -167,8 +167,12 @@ export class EncChannel {
           return curr;
         })
       : null;
-    if (!red) throw Error('no meta');
-    return JSON.parse(red.content);
+    if (red) 
+        return JSON.parse(red.content);
+    const chan = await this.getChannelById(info.id, info.db_only)
+    if (chan != null) 
+        return {about: chan.about, name: chan.name, picture: chan.picture}; 
+    throw Error("no channel")
   }
 
   async send(
