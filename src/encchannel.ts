@@ -202,7 +202,7 @@ export class EncChannel {
   }
 
   async sub(
-    channel: any,
+    channel: {id: string, privkey: string},
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}
   ) {
@@ -217,7 +217,7 @@ export class EncChannel {
   }
 
   async decrypt(
-    channel: EncChannelInfo,
+    channel: {id: string, privkey: string},
     ev: NostrEvent,
     unwrap = true
   ): Promise<NostrEvent | null> {

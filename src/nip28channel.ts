@@ -72,15 +72,24 @@ export class Nip28Channel {
   }
 
   async getMeta(channel_id: string, db_only = true): Promise<Nip28ChannelInfo> {
-    const ev = await this.pool.list(
-      [{ kinds: [40], ids: [channel_id] }],
+    const evs = await this.pool.list(
+      [
+        { kinds: [41], '#e': [channel_id] },
+        { kinds: [40], ids: [channel_id] },
+      ],
       db_only
     );
-    if (ev.length > 0) {
+    if (evs.length > 0) {
+      const ev = evs.reduce((a, b)=> {
+        if (b.kind > a.kind || b.created_at > a.created_at) {
+          return b
+        }
+        return a
+      })
       return {
-        id: ev[0].id,
-        author: ev[0].pubkey,
-        ...JSON.parse(ev[0].content),
+        id: ev.id,
+        author: ev.pubkey,
+        ...JSON.parse(ev.content),
       };
     } else {
       throw new Error(`Channel not found`);
