@@ -8,7 +8,7 @@ const GRAPH_DEPTH = 3
 // define a nip02 tag type
 type NIP02Contact = string[];
 type PublicKey = string;
-type SocialGraphEntry = {
+export type SocialGraphEntry = {
   pubkey: PublicKey,
   degree: number,
   connection: PublicKey, // For degree 1, this is always the user's own pubkey. For degree 2, this is the pubkey of the contact between us and this contactPubkey.
@@ -16,7 +16,7 @@ type SocialGraphEntry = {
   lastUpdated: number, // timestamp is updated when this contact's social graph is updated
   fwf?: number, // (number of) friends who follow (this contact)
 }
-type SocialGraph = {
+export type SocialGraph = {
   [key in PublicKey]: SocialGraphEntry;
 }
 
@@ -34,18 +34,56 @@ export function isValidNIP02Contact(ptag: NIP02Contact): ptag is NIP02Contact {
     ptag[1].length === 64
 }
 
+/**
+ * Pass this an EventTemplate array and it will return a function to use as the event handler for receiving events from the pool. It will validate them and put them into the provided array.
+ * @param event from subscription
+ * @returns 
+ */
+function validateContacts(events: EventTemplate[]) {
+  const store = events;
+  /**
+   * Ensure the provided event is a valid kind 3 event or kind 0 event with contacts.
+   */
+  return function (event: EventTemplate): void {
+    if (isValidKind3Kind0Event(event)) {
+      // store the event
+      store.push(event);
+    }
+  }
+}
+
+function isValidKind3Kind0Event(event: EventTemplate): boolean {
+  return isValidKind3Event(event) || isKind0EventWithContacts(event)
+}
+
+function isValidKind3Event(event: EventTemplate): boolean {
+  return event.kind === 3 &&
+    typeof event.tags === 'object' &&
+    typeof event.tags.length === 'number' &&
+    event.tags.length > 0 &&
+    event.tags.every(isValidNIP02Contact)
+}
+
+function isKind0EventWithContacts(event: EventTemplate): boolean {
+  return event.kind === 0 &&
+    event.tags.length > 0 &&
+    event.tags.every(isValidNIP02Contact)
+}
+
 export class ArcadeSocial {
   public pool: NostrPool;
   private ident: ArcadeIdentity;
   public socialGraph: SocialGraph = {};
-  public iteration = 0;
+  public iteration = 1;
   public paused = false;
   private pausedOnKey: string | null = null;
   private pausedOnDegree = 1;
-  constructor(pool: NostrPool, ident: ArcadeIdentity) {
+  constructor(pool: NostrPool, ident: ArcadeIdentity, autoStart = true) {
     this.pool = pool;
     this.ident = ident;
-    this.start();
+    if( autoStart ){
+      this.start();
+    }
   }
   /**
    * Stop social graph generation process and save where we left off.
@@ -56,7 +94,7 @@ export class ArcadeSocial {
   /**
    * Start or restart graph generation process.
    */
-  start(): void {
+  start() {
     this.paused = false;
     // start or restart
     this.extendGraph(this.pausedOnKey || this.ident.pubKey, this.pausedOnDegree);
@@ -74,15 +112,23 @@ export class ArcadeSocial {
       this.pausedOnDegree = degree;
       return;
     }
-    const kind3: EventTemplate[] = [];
-    const filter: Filter<number> = { kinds: [3], authors: [pubkey] };
-    this.pool.sub([filter], event => kind3.push(event), () => {
-      kind3.sort((a, b) => b.created_at - a.created_at)
+    const events: EventTemplate[] = [];
+    const storeContacts = validateContacts(events);
+    const filter: Filter<number> = { kinds: [3,0], authors: [pubkey] };
+    this.pool.sub([filter], storeContacts, () => {
+      events.sort((a, b) => b.created_at - a.created_at)
       try {
-        this.buildGraph(pubkey, kind3[0].tags, degree)
+        this.buildGraph(pubkey, events[0].tags, degree)
       } catch (error) {
         console.log('pubkey had no contacts', error)
-        this.iterateGraph()
+        if (pubkey === this.ident.pubKey) {
+          // this is the user's own pubkey. We should have contacts. Nothing more can be done.
+          console.warn(pubkey,'go make some friends or you won\'t have a social graph');
+          this.pause();
+        } else {
+          // this pubkey didn't have contacts. proceed to the next pubkey.
+          this.iterateGraph()
+        }
       }
       return Promise.resolve();
     });
@@ -134,7 +180,7 @@ export class ArcadeSocial {
     const graphKeys = Object.keys(this.socialGraph)
     if (this.iteration >= graphKeys.length) {
       // we've completed the graph. start over
-      this.iteration = 0
+      this.iteration = 1
     }
     // get contact
     const contact = graphKeys[this.iteration]
@@ -142,7 +188,7 @@ export class ArcadeSocial {
     if (
       now - this.socialGraph[contact].lastUpdated > STALE_GRAPH && 
       this.socialGraph[contact].degree + 1 <= GRAPH_DEPTH
-      ) {
+    ) {
       this.extendGraph(contact, this.socialGraph[contact].degree + 1)
       this.iteration++
     } else {
