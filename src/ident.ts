@@ -1,11 +1,13 @@
 import {
-  signEvent,
+  getSignature,
   getEventHash,
   getPublicKey,
   nip19,
   nip04,
   verifySignature,
 } from 'nostr-tools';
+
+export const CURRENT_ENCRYPTION_VERSION = 1
 
 import { secp256k1 } from '@noble/curves/secp256k1';
 import { strict as assert } from 'assert';
@@ -84,11 +86,33 @@ export class ArcadeIdentity {
     return await nip04.decrypt(this.privKey, pubkey, content);
   }
 
+  async selfEncrypt(content: string): Promise<string> {
+    const epriv = generatePrivateKey();
+    const epub = getPublicKey(epriv);
+    const encrypted = await this.nip04XEncrypt(
+      epriv,
+      this.pubKey,
+      content,
+      1
+    );
+    return JSON.stringify([epub, encrypted])
+  }
+
+  async selfDecrypt(content: string): Promise<string> {
+    const [pubkey, encrypted] = JSON.parse(content)
+
+    return await this.nip04XDecrypt(
+      this.privKey,
+      pubkey,
+      encrypted,
+    );
+  }
+
   async nip04XEncrypt(
     privkey: string,
     pubkey: string,
     content: string,
-    version: number,
+    version: number = CURRENT_ENCRYPTION_VERSION,
     iv?: Uint8Array
   ): Promise<string> {
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey);
@@ -154,16 +178,26 @@ export class ArcadeIdentity {
   async nipXXEncrypt(
     pubkey: string,
     inner: UnsignedEvent,
-    version: number
+    version: number = CURRENT_ENCRYPTION_VERSION
   ): Promise<NostrEvent> {
     const event = await this.signEvent(inner);
     const content = JSON.stringify(event);
     const iv = randomBytes(16);
+
+    /*
+     * This mechanism allows the user to decrypt sent-messages later
+     * However, it probably needs a bit more review before it's used for real
+     * Also, we need a way to index these messages, locally, as "sent by me"
+     
     const dpriv_n =
       (utils.bytesToNumberBE(utils.hexToBytes(this.privKey)) *
         utils.bytesToNumberBE(iv)) %
       secp256k1.CURVE.n;
     const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32));
+    
+    */
+    
+    const epriv = generatePrivateKey();
     const epub = getPublicKey(epriv);
     const encrypted = await this.nip04XEncrypt(
       epriv,
@@ -234,7 +268,7 @@ export class ArcadeIdentity {
     const ret: NostrEvent = {
       ...tmp,
       id: getEventHash(tmp),
-      sig: signEvent(tmp, privkey),
+      sig: getSignature(tmp, privkey),
     };
     return ret as NostrEvent;
   }

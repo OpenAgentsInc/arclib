@@ -1,7 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { Filter, generatePrivateKey, getPublicKey } from 'nostr-tools';
-import { NostrPool, NostrEvent, ArcadeIdentity } from '.';
+import { NostrPool, NostrEvent, ArcadeIdentity, UnsignedEvent } from '.';
 import { Nip28ChannelInfo } from './nip28channel';
 
 export interface EncChannelInfo extends Nip28ChannelInfo {
@@ -102,8 +102,7 @@ export class EncChannel {
           content: JSON.stringify(xmeta),
           tags: [],
         };
-        const enc = await this.pool.ident.nipXXEncrypt(pubkey, inner, 1);
-        await this.pool.sendRaw(enc);
+        await this.sendWrapped(pubkey, inner)
       })
     );
 
@@ -128,7 +127,7 @@ export class EncChannel {
           content: JSON.stringify(xmeta),
           tags: [],
         };
-        const enc = await this.pool.ident.nipXXEncrypt(pubkey, inner, 1);
+        const enc = await this.pool.ident.nipXXEncrypt(pubkey, inner);
         await this.pool.sendRaw(enc);
       })
     );
@@ -142,8 +141,7 @@ export class EncChannel {
       content: await this.pool.ident.nip04XEncrypt(
         epriv,
         channel_pubkey,
-        JSON.stringify(meta),
-        1
+        JSON.stringify(meta)
       ),
       tags: [['p', channel_pubkey]],
     };
@@ -196,13 +194,20 @@ export class EncChannel {
       content: await this.pool.ident.nip04XEncrypt(
         epriv,
         channel_pubkey,
-        JSON.stringify(inner),
-        1
+        JSON.stringify(inner)
       ),
       tags: [['p', channel_pubkey]],
     };
     const ev = await tmp_ident.signEvent(message);
     return await this.pool.sendRaw(ev);
+  }
+
+  async sendWrapped(
+    pubkey: string,
+    inner: UnsignedEvent,
+  ): Promise<NostrEvent> {
+    const enc = await this.pool.ident.nipXXEncrypt(pubkey, inner);
+    return await this.pool.sendRaw(enc);
   }
 
   async sub(

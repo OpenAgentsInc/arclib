@@ -40,14 +40,28 @@ describe('signEvent', () => {
     });
     const outer = await bob.nipXXEncrypt(alice.pubKey, inner, 1)
     const same = await alice.nipXXDecrypt(outer)
-    const same2 = await bob.nipXXDecrypt(outer)
+
+    /* disable ability to decrypt sent messages for now
+      const same2 = await bob.nipXXDecrypt(outer)
+    */
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore 
     const comp = ({kind, tags, content, created_at, pubkey, id})=>({kind, tags, content, created_at, pubkey, id})
 
     expect(comp(same)).toStrictEqual(comp(inner))
-    expect(comp(same)).toStrictEqual(comp(same2))
+    /* disable ability to decrypt sent messages for now
+      expect(comp(same)).toStrictEqual(comp(same2))
+    */
+  })
+
+  it('can selfencrypt', async () => {
+    const bob = new ArcadeIdentity(
+      nsec
+    );
+    const content = await bob.selfEncrypt("data")
+    const dec = await bob.selfDecrypt(content)
+    expect(dec).toEqual("data")
   })
 
   it('returns a valid ArcadeEvent', async () => {
