@@ -35,6 +35,7 @@ test('prof: can load', async () => {
         secret_setting: "don't tell"
     }
 
+    expect(await prof.load()).toBeNull()
     const ev = await prof.save(info, ["secret_setting"])
     expect(ev).toBeTruthy()
     const cont = JSON.parse(ev.content)
