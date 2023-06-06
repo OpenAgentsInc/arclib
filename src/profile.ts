@@ -34,18 +34,22 @@ export class ProfileManager {
   }
 
 
-  async load() : Promise<Profile> {
-      const list = await this.pool.list([{ kinds: [0], authors: [this.pool.ident.pubKey] }], true)
-      const latest = list.slice(-1)[0]
-      if (latest) {
-        const content = JSON.parse(latest.content)
-        if (content.other) {
-            const other = JSON.parse(await this.pool.ident.selfDecrypt(content.other))
-            Object.assign(content, other)
-            delete content["other"]
-        }
-        return content
+  async load() : Promise<Profile | null> {
+      try {
+          const list = await this.pool.list([{ kinds: [0], authors: [this.pool.ident.pubKey] }], true)
+          const latest = list.slice(-1)[0]
+          if (latest) {
+            const content = JSON.parse(latest.content)
+            if (content.other) {
+                const other = JSON.parse(await this.pool.ident.selfDecrypt(content.other))
+                Object.assign(content, other)
+                delete content["other"]
+            }
+            return content
+          }
+      } catch (e) {
+        console.log("error loading profile: ", e)
       }
-      return {}
+      return null
   }
 }
