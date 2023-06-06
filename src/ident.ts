@@ -27,7 +27,6 @@ import * as crypto from 'isomorphic-webcrypto';
     await crypto.ensureSecure();
     const array = new Uint8Array(1);
     crypto.getRandomValues(array);
-    const safeValue = array[0];
   }
 })();
 

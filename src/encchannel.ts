@@ -256,7 +256,7 @@ export class EncChannel {
   }
 
   async list(
-    channel: any,
+    channel: {id: string, privkey: string},
     filter: Filter = {},
     db_only = false
   ): Promise<NostrEvent[]> {
