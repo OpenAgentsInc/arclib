@@ -8,8 +8,12 @@ export async function listChannels(
   db_only = false
 ): Promise<Nip28ChannelInfo[]> {
   return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
-    return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
-  });
+      try {
+        return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
+      } catch {
+        return null
+      }
+  }).filter(e=>e);
 }
 
 export interface Nip28ChannelInfo {

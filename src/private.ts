@@ -3,24 +3,6 @@
 import { Filter, matchFilter, nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent, UnsignedEvent } from '.';
 
-export async function listChannels(
-  pool: NostrPool,
-  db_only = false
-): Promise<ChannelInfo[]> {
-  // todo: this should only use the store, not go and re-query stuff, being lazy to get things done
-  return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
-    return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
-  });
-}
-
-interface ChannelInfo {
-  name: string;
-  about: string;
-  picture: string;
-  id?: string;
-  author?: string;
-}
-
 export class PrivateMessageManager {
   private pool: NostrPool;
   //  private store: SqliteStore;

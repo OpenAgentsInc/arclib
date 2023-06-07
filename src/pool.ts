@@ -230,18 +230,26 @@ export class NostrPool {
    */
   async send(message: UnsignedEvent): Promise<NostrEvent> {
     const [event, pubs] = await this.publish(message);
-    return new Promise<NostrEvent>((res) => {
-      pubs.on('ok', () => {
+    return new Promise<NostrEvent>((res, rej) => {
+      setTimeout(()=>{rej("send timed out")}, 3000)
+      pubs.on('ok', (relay: string) => {
         res(event);
+      });
+      pubs.on('failed', (relay: string, reason: string) => {
+        console.log("failed to publish", relay)
       });
     });
   }
 
   async sendRaw(message: NostrEvent): Promise<NostrEvent> {
     const [event, pubs] = await this.publishRaw(message);
-    return new Promise<NostrEvent>((res) => {
+    return new Promise<NostrEvent>((res, rej) => {
+      setTimeout(()=>{rej("send raw timed out")}, 3000)
       pubs.on('ok', () => {
         res(event);
+      });
+      pubs.on('failed', (relay: string, reason: string) => {
+        console.log("failed to publish raw", relay)
       });
     });
   }
