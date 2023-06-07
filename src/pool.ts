@@ -232,10 +232,10 @@ export class NostrPool {
     const [event, pubs] = await this.publish(message);
     return new Promise<NostrEvent>((res, rej) => {
       setTimeout(()=>{rej("send timed out")}, 3000)
-      pubs.on('ok', (relay: string) => {
+      pubs.on('ok', () => {
         res(event);
       });
-      pubs.on('failed', (relay: string, reason: string) => {
+      pubs.on('failed', (relay: string) => {
         console.log("failed to publish", relay)
       });
     });
@@ -248,7 +248,7 @@ export class NostrPool {
       pubs.on('ok', () => {
         res(event);
       });
-      pubs.on('failed', (relay: string, reason: string) => {
+      pubs.on('failed', (relay: string) => {
         console.log("failed to publish raw", relay)
       });
     });

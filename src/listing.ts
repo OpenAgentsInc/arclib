@@ -101,6 +101,7 @@ export class ArcadeListings {
           const tag = el.tags.find((el) => {
             return el[0] == 'data';
           });
+          if (!tag) return null
           const info: ArcadeListing = JSON.parse(tag[1]);
           this.augmentListing(info, el);
           if (this.expired(now_secs, info)) return null;
