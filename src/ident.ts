@@ -257,7 +257,7 @@ export class ArcadeIdentity {
     pubkey: string
   ): Promise<NostrEvent> {
     const { kind, tags, content } = event;
-    const created_at = event.created_at??Date.now() / 1000
+    const created_at = event.created_at??Math.floor(Date.now() / 1000)
     const tmp: Omit<NostrEvent, 'id' | 'sig'> = {
       kind: kind,
       tags: tags,
