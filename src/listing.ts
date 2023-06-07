@@ -97,16 +97,18 @@ export class ArcadeListings {
         db_only
       )
     ).map((el: NostrEvent) => {
-      const tag = el.tags.find((el) => {
-        return el[0] == 'data';
-      });
-      if (!tag) {
+      try {
+          const tag = el.tags.find((el) => {
+            return el[0] == 'data';
+          });
+          if (!tag) return null
+          const info: ArcadeListing = JSON.parse(tag[1]);
+          this.augmentListing(info, el);
+          if (this.expired(now_secs, info)) return null;
+          return info;
+      } catch {
         return null;
       }
-      const info: ArcadeListing = JSON.parse(tag[1]);
-      this.augmentListing(info, el);
-      if (this.expired(now_secs, info)) return null;
-      return info;
     });
     return ents.filter((el) => {
       return el != null;
@@ -242,10 +244,14 @@ export class ArcadeListings {
       if (!tag || !repl) {
         return null;
       }
-      const info: ArcadeOffer = JSON.parse(tag[1]);
-      this.augmentListing(info, el);
-      if (this.expired(now_secs, info)) return null;
-      return info;
+      try {
+          const info: ArcadeOffer = JSON.parse(tag[1]);
+          this.augmentListing(info, el);
+          if (this.expired(now_secs, info)) return null;
+          return info;
+      } catch {
+        return null;
+      }
     });
     return ents.filter((el) => {
       return el != null;

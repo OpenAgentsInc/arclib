@@ -46,7 +46,7 @@ export interface NostrEvent {
 export type UnsignedEvent = Omit<
   NostrEvent,
   'id' | 'sig' | 'created_at' | 'pubkey'
->;
+> & {created_at?: number};
 
 export class ArcadeIdentity {
   public privKey: string;
@@ -209,6 +209,7 @@ export class ArcadeIdentity {
       kind: 99,
       content: encrypted,
       pubkey: this.pubKey,
+      created_at: inner.created_at,
       tags: [['p', pubkey]],
     };
     const signed = await this.signEventWith(unsigned, epriv, epub);
@@ -256,7 +257,7 @@ export class ArcadeIdentity {
     pubkey: string
   ): Promise<NostrEvent> {
     const { kind, tags, content } = event;
-    const created_at = Math.floor(Date.now() / 1000);
+    const created_at = event.created_at??Math.floor(Date.now() / 1000)
     const tmp: Omit<NostrEvent, 'id' | 'sig'> = {
       kind: kind,
       tags: tags,
