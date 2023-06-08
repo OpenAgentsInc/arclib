@@ -18,7 +18,14 @@ import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
 
-import * as crypto from 'isomorphic-webcrypto';
+let crypto: any
+
+try {
+    crypto = require('isomorphic-webcrypto');
+} catch {
+    crypto = {}
+}
+
 
 (async () => {
   // Only needed for crypto.getRandomValues
