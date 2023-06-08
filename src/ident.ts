@@ -32,8 +32,8 @@ let crypto: AnyCrypto;
 // Usage
 if (typeof window !== 'undefined' && typeof window.crypto !== 'undefined') {
   crypto = window.crypto
-} else if (typeof global !== 'undefined' && typeof global.crypto !== 'undefined') {
-  crypto = global.crypto
+} else if (typeof process !== 'undefined' && typeof process.versions !== 'undefined' && typeof process.versions.node !== 'undefined') {
+  crypto = require('node:crypto').webcrypto;
 } else {
   crypto = require('isomorphic-webcrypto');
 }
