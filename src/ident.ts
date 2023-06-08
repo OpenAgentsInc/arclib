@@ -18,12 +18,24 @@ import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
 
-let crypto: any
 
-try {
-    crypto = require('isomorphic-webcrypto');
-} catch {
-    crypto = global ? global.crypto : {}
+type AnyCrypto  = Crypto & {ensureSecure?: any};
+
+declare global {
+  interface Window {
+    crypto: AnyCrypto;
+  }
+}
+
+let crypto: AnyCrypto;
+
+// Usage
+if (typeof window !== 'undefined' && typeof window.crypto !== 'undefined') {
+  crypto = window.crypto
+} else if (typeof global !== 'undefined' && typeof global.crypto !== 'undefined') {
+  crypto = global.crypto
+} else {
+  crypto = require('isomorphic-webcrypto');
 }
 
 
