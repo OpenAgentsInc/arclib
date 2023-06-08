@@ -14,7 +14,7 @@ export class DbEvent extends Model {
   @text('sig') sig: string;
   @field('kind') kind: number;
   @text('pubkey') pubkey: string;
-  @json('tags', (rawTags: any): string[][] => {
+  @json('tags', (rawTags: string[][]): string[][] => {
     return Array.isArray(rawTags) ? rawTags : [];
   })
   tags: string[][];
@@ -127,7 +127,7 @@ export function connectDb(): ArcadeDb {
     migrations: schemaMigrations({
       migrations: [],
     }),
-    onSetUpError: (error: any): void => {
+    onSetUpError: (error: unknown): void => {
       console.log('setup error', error);
     },
   });

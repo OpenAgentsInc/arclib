@@ -19,7 +19,7 @@ import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
 
 
-type AnyCrypto  = Crypto & {ensureSecure?: any};
+type AnyCrypto  = Crypto & {ensureSecure?: ()=>Promise<void>}
 
 declare global {
   interface Window {
@@ -29,13 +29,14 @@ declare global {
 
 let crypto: AnyCrypto;
 
-// Usage
 if (typeof window !== 'undefined' && typeof window.crypto !== 'undefined') {
   crypto = window.crypto
-} else if (typeof process !== 'undefined' && typeof process.versions !== 'undefined' && typeof process.versions.node !== 'undefined') {
-  crypto = require('node:crypto').webcrypto;
+} else if (typeof process !== 'undefined' && 
+           typeof process.versions !== 'undefined' &&
+           typeof process.versions.node !== 'undefined') {
+  crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
 } else {
-  crypto = require('isomorphic-webcrypto');
+  crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
 }
 
 

@@ -31,7 +31,7 @@ type DbModule = {
 }
 
 try {
-    const db: DbModule = require('./base')
+    const db: DbModule = require('./base')  // eslint-disable-line @typescript-eslint/no-var-requires
     exports.connectDb = db.connectDb
     exports.ArcadeDb = db.ArcadeDb
     exports.DbEvent = db.DbEvent
