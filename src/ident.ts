@@ -23,7 +23,7 @@ let crypto: any
 try {
     crypto = require('isomorphic-webcrypto');
 } catch {
-    crypto = {}
+    crypto = global ? global.crypto : {}
 }
 
 
