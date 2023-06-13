@@ -112,6 +112,8 @@ export class PrivateMessageManager {
       { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
+      filter_ex[0].authors = [pubkey]
+
       filter_ex.push({
         kinds: [4],
         authors: [this.pool.ident.pubKey],
