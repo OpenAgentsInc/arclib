@@ -29,18 +29,19 @@ declare global {
 
 let crypto: AnyCrypto;
 
+try {
+    crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
+} catch {
+}
+
+try {
+    // you must not use if/then statements to load isomorphic-webcrypto, or haste maps fail in react native
+    crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
+} catch {
+}
+
 if (typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.subtle != 'undefined') {
-  crypto = window.crypto
-} else if (typeof process !== 'undefined' && 
-           typeof process.versions !== 'undefined' &&
-           typeof process.versions.node !== 'undefined') {
-  try {
-      crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
-  } catch {
-      crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
-  }
-} else {
-  crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
+    crypto = window.crypto
 }
 
 
