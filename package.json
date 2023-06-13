@@ -108,7 +108,8 @@
   },
   "peerDependencies": {
     "@nozbe/watermelondb": "<0.26.0",
-    "expo-crypto": ">12"
+    "expo-crypto": ">12",
+    "isomorphic-webcrypto": ">2"
   },
   "peerDependenciesMeta": {
     "@nozbe/watermelondb": {
