@@ -29,12 +29,16 @@ declare global {
 
 let crypto: AnyCrypto;
 
-if (typeof window !== 'undefined' && typeof window.crypto !== 'undefined') {
+if (typeof window !== 'undefined' && typeof window.crypto !== 'undefined' && typeof window.crypto.subtle != 'undefined') {
   crypto = window.crypto
 } else if (typeof process !== 'undefined' && 
            typeof process.versions !== 'undefined' &&
            typeof process.versions.node !== 'undefined') {
-  crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
+  try {
+      crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
+  } catch {
+      crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
+  }
 } else {
   crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
 }
