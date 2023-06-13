@@ -110,6 +110,7 @@ export class ArcadeDb extends Database implements ArcadeDb {
     }).filter(e=>e) as NostrEvent[];
     for (const ev of this.queue.values()) {
       if (! seen.has(ev.id) && filter.some((f) => matchFilter(f, ev))) {
+        seen.add(ev.id)
         els.push(ev)
       }
     }
@@ -149,7 +150,7 @@ export class ArcadeDb extends Database implements ArcadeDb {
   async saveEvent(ev: NostrEvent) {
     this.queue.set(ev.id, ev)
     if (! this.timer ) {
-      this.timer = setTimeout(this.flush, 500)
+      this.timer = setTimeout(async ()=>{await this.flush()}, 500)
     }
   }
 
@@ -160,9 +161,11 @@ export class ArcadeDb extends Database implements ArcadeDb {
     if (!this.queue) return
     const q = Array.from(this.queue.values())
     this.queue = new Map()
-    await this.batch(q.map((ev)=> {
-      return DbEvent.prepareEvent(this, ev, false)
-    }))
+    await this.write(async () => {
+      await this.batch(q.map((ev)=> {
+        return DbEvent.prepareEvent(this, ev, false)
+      }))
+    })
   }
 }
 

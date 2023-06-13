@@ -138,6 +138,7 @@ export class NostrPool {
       ent.cbs.delete(callback);
       if (!ent.cbs) {
         this.filters.delete(fil);
+        ent.sub.unsub()
       }
     }
   }
@@ -168,8 +169,8 @@ export class NostrPool {
           return { ...f, since };
         });
       }
-      const sub = this.pool.sub(this.relays, sub_filters);
-      new_filters.forEach((f) => {
+      new_filters.forEach((f, i: number) => {
+        const sub = this.pool.sub(this.relays, [sub_filters[i]]);
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
         const dat = { sub: sub, eose_seen: false, cbs, last_hit: now };
@@ -215,7 +216,6 @@ export class NostrPool {
    */
   async publish(message: UnsignedEvent) {
     const event: NostrEvent = await this.ident.signEvent(message);
-    await this.db?.saveEvent(event);
     return [event, this.pool.publish(this.relays, event)] as [NostrEvent, Pub];
   }
 

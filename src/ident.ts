@@ -33,6 +33,8 @@ let crypto: AnyCrypto;
 try {
     // you must not use if/then statements to load isomorphic-webcrypto, or haste maps fail in react native
     crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
+    globalThis.crypto = {}
+    globalThis.crypto.subtle = crypto.subtle
 } catch {
     try {
         crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
@@ -45,9 +47,10 @@ try {
   // Only needed for crypto.getRandomValues
   // but only wait once, future calls are secure
   if (crypto.ensureSecure) {
-    await crypto.ensureSecure();
-    const array = new Uint8Array(1);
-    crypto.getRandomValues(array);
+    try {
+        await crypto.ensureSecure();
+    } catch {
+    }
   }
 })();
 
