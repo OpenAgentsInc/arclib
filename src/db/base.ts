@@ -96,21 +96,16 @@ export class ArcadeDb extends Database implements ArcadeDb {
     const or: Q.Where[] = [];
     filter.forEach((f) => {
       const and: Q.Where[] = [];
-      f.authors?.map((el: string) => {
-        and.push(Q.where('pubkey', Q.eq(el)));
-      });
-      f.ids?.map((el: string) => {
-        and.push(Q.where('event_id', Q.eq(el)));
-      });
-      f.kinds?.map((el: number) => {
-        and.push(Q.where('kind', Q.eq(el)));
-      });
-      f['#e']?.map((el: string) => {
-        and.push(Q.where('e1', Q.eq(el)));
-      });
-      f['#p']?.map((el: string) => {
-        and.push(Q.where('p1', Q.eq(el)));
-      });
+      if (f.authors)
+        and.push(Q.where('pubkey', Q.oneOf(f.authors)))
+      if (f.ids)
+        and.push(Q.where('event_id', Q.oneOf(f.ids)))
+      if (f.kinds)
+        and.push(Q.where('kind', Q.oneOf(f.kinds)))
+      if (f['#e'])
+        and.push(Q.where('e1', Q.oneOf(f['#e'])))
+      if (f['#p'])
+        and.push(Q.where('p1', Q.oneOf(f['#p'])))
       or.push(Q.and(...and));
     });
     return Q.or(...or);

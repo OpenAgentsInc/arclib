@@ -72,7 +72,7 @@
     "@babel/preset-env": "^7.21.5",
     "@babel/preset-typescript": "^7.21.5",
     "@jest/globals": "^29.5.0",
-    "@nozbe/watermelondb": "<0.26.0",
+    "@nozbe/watermelondb": "^0.26.0",
     "@size-limit/preset-small-lib": "^8.2.4",
     "@tsconfig/recommended": "^1.0.2",
     "@types/jest": "^29.5.1",
@@ -111,6 +111,8 @@
     "expo-crypto": ">12"
   },
   "peerDependenciesMeta": {
-    "@nozbe/watermelondb": {"optional": true}
+    "@nozbe/watermelondb": {
+      "optional": true
+    }
   }
 }
