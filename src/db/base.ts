@@ -109,7 +109,7 @@ export class ArcadeDb extends Database implements ArcadeDb {
       }
     }).filter(e=>e) as NostrEvent[];
     for (const ev of this.queue.values()) {
-      if (! seen.has(ev.id)) {
+      if (! seen.has(ev.id) && filter.some((f) => matchFilter(f, ev))) {
         els.push(ev)
       }
     }
