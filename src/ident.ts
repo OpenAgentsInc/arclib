@@ -18,7 +18,28 @@ import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
 
-import * as crypto from 'isomorphic-webcrypto';
+
+type AnyCrypto  = Crypto & {ensureSecure?: ()=>Promise<void>}
+
+declare global {
+  interface Window {
+    crypto: AnyCrypto;
+  }
+}
+
+let crypto: AnyCrypto;
+
+
+try {
+    // you must not use if/then statements to load isomorphic-webcrypto, or haste maps fail in react native
+    crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
+} catch {
+    try {
+        crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
+    } catch {
+        crypto = window.crypto
+    }
+}
 
 (async () => {
   // Only needed for crypto.getRandomValues

@@ -72,6 +72,7 @@
     "@babel/preset-env": "^7.21.5",
     "@babel/preset-typescript": "^7.21.5",
     "@jest/globals": "^29.5.0",
+    "@nozbe/watermelondb": "^0.26.0",
     "@size-limit/preset-small-lib": "^8.2.4",
     "@tsconfig/recommended": "^1.0.2",
     "@types/jest": "^29.5.1",
@@ -102,10 +103,17 @@
   "packageManager": "yarn@1.22.19",
   "dependencies": {
     "@noble/curves": "^1.0.0",
-    "@nozbe/watermelondb": "<0.26.0",
-    "expo-crypto": "^12.2.2",
     "isomorphic-unfetch": "^4.0.2",
-    "isomorphic-webcrypto": "^2.3.8",
     "nostr-tools": "^1.10.1"
+  },
+  "peerDependencies": {
+    "@nozbe/watermelondb": "<0.26.0",
+    "expo-crypto": ">12",
+    "isomorphic-webcrypto": ">2"
+  },
+  "peerDependenciesMeta": {
+    "@nozbe/watermelondb": {
+      "optional": true
+    }
   }
 }

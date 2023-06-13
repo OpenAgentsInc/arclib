@@ -1,4 +1,4 @@
-import { ArcadeDb } from './db';
+import type { ArcadeDb } from './db';
 import { ArcadeIdentity, NostrEvent, UnsignedEvent } from './ident';
 import { SimplePool, Filter, SubscriptionOptions, Sub, Pub } from 'nostr-tools';
 
