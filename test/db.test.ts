@@ -31,6 +31,9 @@ describe('db: load events', () => {
     expect((await db.list([{ ids: [event1.id] }]))[0].content).toEqual(
       'test-content1'
     );
+    // test oneOf
+    expect((await db.list([{ ids: [event1.id, event2.id] }])).length).toEqual(2);
+
     expect((await db.list([{ '#e': ['reply-to1'] }]))[0].content).toEqual(
       'test-content1'
     );
