@@ -42,7 +42,7 @@ try {
         globalThis.crypto = globalThis.crypto || {} as AnyCrypto
         (globalThis.crypto as Writable<AnyCrypto>).subtle = crypto.subtle
     } catch {
-        crypto = window.crypto
+        crypto = globalThis.crypto
     }
 }
 
