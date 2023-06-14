@@ -9,6 +9,21 @@ interface SubInfo {
   last_hit: number;
 }
 
+interface UserInfo {
+  name?: string;
+  display_name?: string;
+  image?: string;
+  picture?: string;
+  banner?: string;
+  bio?: string;
+  nip05?: string;
+  lud06?: string;
+  lud16?: string;
+  about?: string;
+  website?: string;
+  zapService?: string;
+}
+
 // very thin wrapper using SimplePool + ArcadeIdentity
 export class NostrPool {
   ident: ArcadeIdentity;
@@ -30,7 +45,10 @@ export class NostrPool {
     this.filters = new Map<string, SubInfo>();
   }
 
-  async list(filters: Filter<number>[], db_only = false): Promise<NostrEvent[]> {
+  async list(
+    filters: Filter<number>[],
+    db_only = false
+  ): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
       if (db_only) {
@@ -254,6 +272,32 @@ export class NostrPool {
     });
   }
 
+  async getProfile(pubkey: string, db_only = false): Promise<UserInfo> {
+    const ev = await this.list([{ kinds: [0], authors: [pubkey] }], db_only);
+    console.log(ev);
+    if (ev.length > 0) {
+      const payload = JSON.parse(ev[0].content);
+      return { ...payload };
+    } else {
+      throw new Error(`User not found`);
+    }
+  }
+
+  async getContacts(db_only = false): Promise<string[]> {
+    const ev = await this.list(
+      [{ kinds: [3], authors: [this.ident.pubKey] }],
+      db_only
+    );
+    if (ev.length > 0) {
+      const contacts = [];
+      for (const item of ev[0].tags) {
+        contacts.push(item[1]);
+      }
+      return contacts;
+    } else {
+      throw new Error(`Relay not return anything`);
+    }
+  }
 
   /**
    * This function adds a callback function to an array of event callbacks.

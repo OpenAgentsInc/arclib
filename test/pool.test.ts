@@ -154,4 +154,29 @@ describe('NostrPool', () => {
     expect(ret.length).toBe(4);
     pool1.close();
   });
+
+  it('get user profile and contact', async () => {
+    const db = connectDb();
+    const pool1 = new NostrPool(ident, db);
+    if (!pool1.db) throw Error;
+    await pool1.setRelays(relays);
+
+    await pool1.send({
+      content: JSON.stringify({ name: 'yo' }),
+      kind: 0,
+      tags: [],
+    });
+
+    await pool1.send({
+      content: '',
+      kind: 3,
+      tags: [['p', ident.pubKey]],
+    });
+
+    const profile = await pool1.getProfile(ident.pubKey);
+    expect(profile.name).toBeTruthy;
+
+    const contacts = await pool1.getContacts();
+    expect(contacts).toBeTruthy;
+  });
 });
