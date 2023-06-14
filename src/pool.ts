@@ -30,14 +30,18 @@ export class NostrPool {
     this.filters = new Map<string, SubInfo>();
   }
 
-  async list(filters: Filter<number>[], db_only = false): Promise<NostrEvent[]> {
+  async list(filters: Filter<number>[], db_only = false, callback?: (ev: NostrEvent)=>Promise<void>): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
       if (db_only) {
         this.sub(
           filters,
           async (ev) => {
-            await this.db?.saveEvent(ev);
+            if (callback) {
+              await Promise.all([callback(ev), this.db?.saveEvent(ev)])
+            } else {
+              await this.db?.saveEvent(ev);
+            }
           },
           undefined,
           since
@@ -50,7 +54,11 @@ export class NostrPool {
             this.sub(
               filters,
               async (ev) => {
-                await this.db?.saveEvent(ev);
+                if (callback) {
+                  await Promise.all([callback(ev), this.db?.saveEvent(ev)])
+                } else {
+                  await this.db?.saveEvent(ev);
+                }
               },
               async () => {
                 res();
@@ -64,7 +72,7 @@ export class NostrPool {
       }
       return await this.db.list(filters);
     } else {
-      // subsccribe to save events
+      // subscribe to save events
       return await this.pool.list(this.relays, filters);
     }
   }
@@ -138,6 +146,7 @@ export class NostrPool {
       ent.cbs.delete(callback);
       if (!ent.cbs) {
         this.filters.delete(fil);
+        ent.sub.unsub()
       }
     }
   }
@@ -168,31 +177,31 @@ export class NostrPool {
           return { ...f, since };
         });
       }
-      const sub = this.pool.sub(this.relays, sub_filters);
-      new_filters.forEach((f) => {
+      new_filters.forEach((f, i: number) => {
+        const sub = this.pool.sub(this.relays, [sub_filters[i]]);
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
         const dat = { sub: sub, eose_seen: false, cbs, last_hit: now };
         this.filters.set(JSON.stringify(f), dat);
-        sub.on('eose', () => {
-          dat.eose_seen = true;
-          if (eose) eose();
-        });
         sub.on('event', (ev) => {
           dat.cbs.forEach((sub) => {
             sub(ev);
           });
         });
+        sub.on('eose', () => {
+          dat.eose_seen = true;
+          if (eose) eose();
+        });
       });
     }
     old_filters.forEach((dat) => {
       if (dat) {
+        dat.cbs.add(callback);
+        dat.last_hit = now;
         if (eose) {
           if (dat.eose_seen) eose();
           else dat.sub.on('eose', eose);
         }
-        dat.cbs.add(callback);
-        dat.last_hit = now;
       }
     });
   }
@@ -215,7 +224,6 @@ export class NostrPool {
    */
   async publish(message: UnsignedEvent) {
     const event: NostrEvent = await this.ident.signEvent(message);
-    await this.db?.saveEvent(event);
     return [event, this.pool.publish(this.relays, event)] as [NostrEvent, Pub];
   }
 

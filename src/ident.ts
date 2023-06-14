@@ -29,15 +29,20 @@ declare global {
 
 let crypto: AnyCrypto;
 
+type Writable<T> = { -readonly [P in keyof T]: T[P] };
 
 try {
     // you must not use if/then statements to load isomorphic-webcrypto, or haste maps fail in react native
     crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
+    globalThis.crypto = globalThis.crypto || {} as AnyCrypto
+    (globalThis.crypto as Writable<AnyCrypto>).subtle = crypto.subtle
 } catch {
     try {
         crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
+        globalThis.crypto = globalThis.crypto || {} as AnyCrypto
+        (globalThis.crypto as Writable<AnyCrypto>).subtle = crypto.subtle
     } catch {
-        crypto = window.crypto
+        crypto = globalThis.crypto
     }
 }
 
@@ -45,9 +50,11 @@ try {
   // Only needed for crypto.getRandomValues
   // but only wait once, future calls are secure
   if (crypto.ensureSecure) {
-    await crypto.ensureSecure();
-    const array = new Uint8Array(1);
-    crypto.getRandomValues(array);
+    try {
+        await crypto.ensureSecure();
+    } catch (e) {
+        console.log("todo: roll our own RN crypto polyfill, either using webview, or expo-crypto")
+    }
   }
 })();
 

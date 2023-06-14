@@ -40,23 +40,22 @@ export class PrivateMessageManager {
 
   sub(
     callback: (ev: NostrEvent) => void,
-    filter: Filter = {},
+    filter?: Filter,
     eose?: () => Promise<void>,
     pubkey?: string
   ) {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
-    console.log('subbing');
+    console.log('subbing', filter_ex);
     this.pool.sub(
       filter_ex,
       (ev) => {
-        console.log('ev is here', ev);
-        if (matchFilter(filter, ev)) {
+        if (!filter || matchFilter(filter, ev)) {
           this.decrypt(ev).then((got) => {
             if (got) callback(got);
           });
         }
       },
-      eose
+      async () => { await new Promise((res)=>setTimeout(res, 1)); if (eose) await eose() ; }
     );
   }
 
@@ -64,17 +63,14 @@ export class PrivateMessageManager {
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
-          console.log('decrypt ev', ev);
           ev = await this.pool.ident.nipXXDecrypt(ev);
         } else {
-          console.log('decrypt dm', ev);
           ev.content = await this.pool.ident.nip04Decrypt(
             ev.pubkey,
             ev.content
           );
         }
       } else {
-        console.log('decrypt nip4', ev);
         const pubkey = ev.tags.find((t) => t[0] == 'p')?.[1] as string;
         ev.content = await nip04.decrypt(
           this.pool.ident.privKey,
@@ -90,7 +86,7 @@ export class PrivateMessageManager {
   }
 
   async list(
-    filter: Filter = {},
+    filter?: Filter,
     db_only = false,
     pubkey?: string
   ): Promise<NostrEvent[]> {
@@ -98,7 +94,7 @@ export class PrivateMessageManager {
     const lst = await this.pool.list(filter_ex, db_only);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
-        return matchFilter(filter, ev) ? await this.decrypt(ev) : null;
+        return (!filter || matchFilter(filter, ev)) ? await this.decrypt(ev) : null;
       })
     );
 
@@ -109,7 +105,7 @@ export class PrivateMessageManager {
 
   public filter(pubkey?: string) {
     const filter_ex: Filter<number>[] = [
-      { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
+      { kinds: [4], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
       filter_ex[0].authors = [pubkey]

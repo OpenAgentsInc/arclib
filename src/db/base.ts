@@ -1,10 +1,11 @@
-import { Collection, Database, Model, Q } from '@nozbe/watermelondb';
+import { Collection, Database, DatabaseAdapter, Model, Q } from '@nozbe/watermelondb';
 import { field, text, json } from '@nozbe/watermelondb/decorators';
 import { schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
 import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
 import { AppSchema, TableName } from './schema';
 import { NostrEvent } from '../ident';
-import { Filter } from 'nostr-tools';
+import { Filter, matchFilter } from 'nostr-tools';
+import { Class } from '@nozbe/watermelondb/types';
 
 export class DbEvent extends Model {
   static table = TableName.EVENTS;
@@ -23,6 +24,37 @@ export class DbEvent extends Model {
   @field('e1') e1: string;
   @field('p1') p1: string;
 
+
+  private static fillPost(post: DbEvent, event: NostrEvent, verified: boolean) {
+    post.event_id = event.id;
+    post.content = event.content;
+    post.sig = event.sig;
+    post.kind = event.kind ;
+    post.tags = event.tags;
+    post.pubkey = event.pubkey;
+    post.created_at = event.created_at;
+    post.verified = verified;
+    event.tags.forEach((tag) => {
+      if (tag[0] == 'e' && !post.e1) {
+        post.e1 = tag[1];
+      }
+      if (tag[0] == 'p' && !post.p1) {
+        post.p1 = tag[1];
+      }
+    });
+  }
+
+  public static prepareEvent(
+    db: Database,
+    event: NostrEvent,
+    verified = false
+  ): DbEvent {
+    const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
+    return posts.prepareCreate((post: DbEvent) => {
+        DbEvent.fillPost(post, event, verified);
+      });
+   }
+ 
   public static async fromEvent(
     db: Database,
     event: NostrEvent,
@@ -37,22 +69,7 @@ export class DbEvent extends Model {
 
     return await db.write(async () => {
       return await posts.create((post: DbEvent) => {
-        post.event_id = event.id;
-        post.content = event.content;
-        post.sig = event.sig;
-        post.kind = event.kind;
-        post.tags = event.tags;
-        post.pubkey = event.pubkey;
-        post.created_at = event.created_at;
-        post.verified = verified;
-        event.tags.forEach((tag) => {
-          if (tag[0] == 'e' && !post.e1) {
-            post.e1 = tag[1];
-          }
-          if (tag[0] == 'p' && !post.p1) {
-            post.p1 = tag[1];
-          }
-        });
+        DbEvent.fillPost(post, event, verified);
       });
     });
   }
@@ -71,14 +88,33 @@ export class DbEvent extends Model {
 }
 
 export class ArcadeDb extends Database implements ArcadeDb {
+  queue: Map<string, NostrEvent>
+  timer: NodeJS.Timeout | null;
+
+  constructor(args: { adapter: SQLiteAdapter | DatabaseAdapter; modelClasses: (typeof DbEvent)[] | Class<Model>[] | Model[]; }) {
+    super(args);
+    this.queue = new Map()
+    this.timer = null
+  }
+
   async list(filter: Filter[]): Promise<NostrEvent[]> {
     const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
     const or: Q.Where = this.filterToQuery(filter);
     const records = await posts.query(or).fetch();
+    const seen = new Set()
     const els = records.map((ev: DbEvent) => {
-      return ev.asEvent();
-    });
-    return els;
+      if (!seen.has(ev.id)) {
+        seen.add(ev.id)
+        return ev.asEvent();
+      }
+    }).filter(e=>e) as NostrEvent[];
+    for (const ev of this.queue.values()) {
+      if (! seen.has(ev.id) && filter.some((f) => matchFilter(f, ev))) {
+        seen.add(ev.id)
+        els.push(ev)
+      }
+    }
+    return els
   }
 
   async latest(filter: Filter[]): Promise<number> {
@@ -112,7 +148,24 @@ export class ArcadeDb extends Database implements ArcadeDb {
   }
 
   async saveEvent(ev: NostrEvent) {
-    return await DbEvent.fromEvent(this, ev);
+    this.queue.set(ev.id, ev)
+    if (! this.timer ) {
+      this.timer = setTimeout(async ()=>{await this.flush()}, 500)
+    }
+  }
+
+  async flush() {
+    const t = this.timer
+    this.timer = null
+    if (t) clearTimeout(t)
+    if (!this.queue) return
+    const q = Array.from(this.queue.values())
+    this.queue = new Map()
+    await this.write(async () => {
+      await this.batch(q.map((ev)=> {
+        return DbEvent.prepareEvent(this, ev, false)
+      }))
+    })
   }
 }
 

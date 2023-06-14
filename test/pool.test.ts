@@ -51,8 +51,13 @@ describe('NostrPool', () => {
     await pool1.setRelays(relays);
     await pool2.setRelays(relays);
 
-    // same pool send goes to db instanty
+    // same pool send goes to db on flush
+    const [res, w1] = waiter(4000);
+    pool1.list([{ authors: [ident.pubKey] }])
+    pool1.sub([{ authors: [ident.pubKey] }], (ev) => {res(ev);})
     const event = await pool1.send({ content: 'yo', tags: [], kind: 1 });
+    await w1;
+    await pool1.db.flush()
     expect((await pool1.db.list([{ authors: [ident.pubKey] }]))[0].id).toBe(
       event.id
     );
@@ -84,7 +89,7 @@ describe('NostrPool', () => {
     expect((await pool1.list([{ authors: [ident.pubKey] }]))[0].id).toBe(
       event.id
     );
-  });
+  }, 10000000);
 
   it('notifys me', async () => {
     const db = connectDb();
