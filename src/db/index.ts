@@ -6,7 +6,8 @@ declare module '.' {
     export class ArcadeDb {
         list(filter: Filter[]): Promise<NostrEvent[]>;
         latest(filter: Filter[]): Promise<number>;
-        saveEvent(ev: NostrEvent): Promise<DbEvent>
+        saveEvent(ev: NostrEvent): Promise<DbEvent>;
+        flush(): Promise<void>;
     }
     export class DbEvent {
        event_id: string;

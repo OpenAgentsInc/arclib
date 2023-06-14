@@ -40,7 +40,7 @@ export class PrivateMessageManager {
 
   sub(
     callback: (ev: NostrEvent) => void,
-    filter: Filter = null,
+    filter?: Filter,
     eose?: () => Promise<void>,
     pubkey?: string
   ) {
@@ -49,14 +49,13 @@ export class PrivateMessageManager {
     this.pool.sub(
       filter_ex,
       (ev) => {
-        console.log('ev is here', ev);
         if (!filter || matchFilter(filter, ev)) {
           this.decrypt(ev).then((got) => {
             if (got) callback(got);
           });
         }
       },
-      eose
+      async () => { await new Promise((res)=>setTimeout(res, 1)); if (eose) await eose() ; }
     );
   }
 
@@ -87,7 +86,7 @@ export class PrivateMessageManager {
   }
 
   async list(
-    filter: Filter = null,
+    filter?: Filter,
     db_only = false,
     pubkey?: string
   ): Promise<NostrEvent[]> {
