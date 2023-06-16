@@ -32,18 +32,23 @@ export class NostrPool {
     this.filters = new Map<string, SubInfo>();
   }
 
-  async list(filters: Filter<number>[], db_only = false, callback?: (ev: NostrEvent)=>Promise<void>): Promise<NostrEvent[]> {
+  async list(filters: Filter<number>[], 
+             db_only = false, 
+             callback?: (ev: NostrEvent)=>Promise<void>, 
+             cbkey?: any,
+            ): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
       let cb: (ev: NostrEvent)=>Promise<any>
 
       if (callback) {
           cb = async (ev) => {
-                if (callback) {
-                  await Promise.all([callback(ev), this.db?.saveEvent(ev)])
-                }
+            if (callback) {
+               await Promise.all([callback(ev), this.db?.saveEvent(ev)])
+            }
           }
-          this.unsubMap.set(callback, cb)
+          cbkey = cbkey??callback
+          this.unsubMap.set(cbkey, cb)
       } else {
         cb = async (ev) => this.db?.saveEvent(ev)
       }
@@ -149,6 +154,7 @@ export class NostrPool {
       ent.cbs.delete(callback);
       const cbm = this.unsubMap.get(callback);
       if (cbm) {
+          console.log("found unsub!")
           ent.cbs.delete(cbm);
           this.unsubMap.delete(callback);
       }
