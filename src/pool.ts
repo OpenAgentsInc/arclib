@@ -44,7 +44,7 @@ export class NostrPool {
       if (callback) {
           cb = async (ev) => {
             if (callback) {
-               await Promise.all([callback({...ev}), this.db?.saveEvent(ev)])
+               await Promise.all([callback(ev), this.db?.saveEvent(ev)])
             }
           }
           cbkey = cbkey??callback

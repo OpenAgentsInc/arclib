@@ -59,7 +59,8 @@ export class PrivateMessageManager {
     );
   }
 
-  async decrypt(ev: NostrEvent) {
+  async decrypt(evx: NostrEvent) {
+    let ev = {...evx}
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
@@ -94,7 +95,7 @@ export class PrivateMessageManager {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
     let cb = callback
     if (callback) {
-        cb = async (ev:NostrEvent)=>{if (await this.decrypt(ev)) {await callback(ev)}}
+        cb = async (ev:NostrEvent)=>{const evx = await this.decrypt(ev); if (evx) {await callback(ev)}}
     }
     const lst = await this.pool.list(filter_ex, db_only, cb, callback);
     const mapped = await Promise.all(
