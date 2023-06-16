@@ -10,13 +10,17 @@ import { waiter, wait_for, sleep } from './waiter';
 import { connectDb } from '../src/db';
 import { assert } from 'console';
 
-const ident = ArcadeIdentity.generate();
+let ident = ArcadeIdentity.generate();
 const srv = new NostrMini();
 const relays: string[] = [];
 
 beforeAll(() => {
   const port: number = srv.listen(0).address().port;
   relays.push(`ws://127.0.0.1:${port}`);
+});
+
+beforeEach(() => {
+  ident = ArcadeIdentity.generate();
 });
 
 afterAll(async () => {
