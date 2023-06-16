@@ -15,9 +15,12 @@ const srv = new NostrMini();
 const relays: string[] = [];
 
 beforeAll(() => {
-  ident = ArcadeIdentity.generate();
   const port: number = srv.listen(0).address().port;
   relays.push(`ws://127.0.0.1:${port}`);
+});
+
+beforeEach(() => {
+  ident = ArcadeIdentity.generate();
 });
 
 afterAll(async () => {
