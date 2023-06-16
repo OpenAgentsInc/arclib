@@ -18,7 +18,7 @@ import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
 
-
+/* eslint-disable @typescript-eslint/ban-ts-comment, no-global-assign */
 // @ts-ignore
 if (typeof crypto !== 'undefined' && !crypto.subtle && crypto.webcrypto) {
   // @ts-ignore

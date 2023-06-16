@@ -16,8 +16,9 @@ export class NostrPool {
   relays: string[] = [];
   unsupportedRelays: string[] = [];
 
-  private eventCallbacks: ((event: NostrEvent) => void)[] = [];
+  private eventCallbacks: ((event: NostrEvent) => void|Promise<void>)[] = [];
   private pool;
+  private unsubMap: Map<undefined|((ev: NostrEvent)=>void|Promise<void>), (ev: NostrEvent)=>void|Promise<void>>;
   watch: Sub;
   db: ArcadeDb | undefined;
   filters: Map<string, SubInfo>;
@@ -26,6 +27,7 @@ export class NostrPool {
     this.ident = ident;
     const pool = new SimplePool();
     this.pool = pool;
+    this.unsubMap = new Map<(ev: NostrEvent)=>void, (ev: NostrEvent)=>void>();
     this.db = db;
     this.filters = new Map<string, SubInfo>();
   }
@@ -33,16 +35,23 @@ export class NostrPool {
   async list(filters: Filter<number>[], db_only = false, callback?: (ev: NostrEvent)=>Promise<void>): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
+      let cb: (ev: NostrEvent)=>Promise<any>
+
+      if (callback) {
+          cb = async (ev) => {
+                if (callback) {
+                  await Promise.all([callback(ev), this.db?.saveEvent(ev)])
+                }
+          }
+          this.unsubMap.set(callback, cb)
+      } else {
+        cb = async (ev) => this.db?.saveEvent(ev)
+      }
+
       if (db_only) {
         this.sub(
           filters,
-          async (ev) => {
-            if (callback) {
-              await Promise.all([callback(ev), this.db?.saveEvent(ev)])
-            } else {
-              await this.db?.saveEvent(ev);
-            }
-          },
+          cb,
           undefined,
           since
         );
@@ -53,13 +62,7 @@ export class NostrPool {
           try {
             this.sub(
               filters,
-              async (ev) => {
-                if (callback) {
-                  await Promise.all([callback(ev), this.db?.saveEvent(ev)])
-                } else {
-                  await this.db?.saveEvent(ev);
-                }
-              },
+              cb,
               async () => {
                 res();
               },
@@ -144,6 +147,11 @@ export class NostrPool {
   unsub(callback: (event: NostrEvent) => void) {
     for (const [fil, ent] of this.filters.entries()) {
       ent.cbs.delete(callback);
+      const cbm = this.unsubMap.get(callback);
+      if (cbm) {
+          ent.cbs.delete(cbm);
+          this.unsubMap.delete(callback);
+      }
       if (!ent.cbs) {
         this.filters.delete(fil);
         ent.sub.unsub()
