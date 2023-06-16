@@ -92,7 +92,11 @@ export class PrivateMessageManager {
     callback?: (ev:NostrEvent)=>Promise<void>
   ): Promise<NostrEvent[]> {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
-    const lst = await this.pool.list(filter_ex, db_only, callback);
+    let cb = callback
+    if (callback) {
+        cb = async (ev:NostrEvent)=>{if (this.decrypt(ev)) {await callback(ev)}}
+    }
+    const lst = await this.pool.list(filter_ex, db_only, cb);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
         return (!filter || matchFilter(filter, ev)) ? await this.decrypt(ev) : null;
