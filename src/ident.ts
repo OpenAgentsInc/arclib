@@ -19,44 +19,11 @@ import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
 
 
-type AnyCrypto  = Crypto & {ensureSecure?: ()=>Promise<void>}
-
-declare global {
-  interface Window {
-    crypto: AnyCrypto;
-  }
+// @ts-ignore
+if (typeof crypto !== 'undefined' && !crypto.subtle && crypto.webcrypto) {
+  // @ts-ignore
+  crypto = crypto.webcrypto
 }
-
-let crypto: AnyCrypto;
-
-type Writable<T> = { -readonly [P in keyof T]: T[P] };
-
-try {
-    // you must not use if/then statements to load isomorphic-webcrypto, or haste maps fail in react native
-    crypto = require('isomorphic-webcrypto'); // eslint-disable-line @typescript-eslint/no-var-requires
-    globalThis.crypto = globalThis.crypto || {} as AnyCrypto
-    (globalThis.crypto as Writable<AnyCrypto>).subtle = crypto.subtle
-} catch {
-    try {
-        crypto = require('node:crypto').webcrypto; // eslint-disable-line @typescript-eslint/no-var-requires
-        globalThis.crypto = globalThis.crypto || {} as AnyCrypto
-        (globalThis.crypto as Writable<AnyCrypto>).subtle = crypto.subtle
-    } catch {
-        crypto = globalThis.crypto
-    }
-}
-
-(async () => {
-  // Only needed for crypto.getRandomValues
-  // but only wait once, future calls are secure
-  if (crypto.ensureSecure) {
-    try {
-        await crypto.ensureSecure();
-    } catch (e) {
-        console.log("todo: roll our own RN crypto polyfill, either using webview, or expo-crypto")
-    }
-  }
-})();
 
 const utf8Encoder = new TextEncoder();
 const utf8Decoder = new TextDecoder();
