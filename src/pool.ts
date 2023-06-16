@@ -154,7 +154,6 @@ export class NostrPool {
       ent.cbs.delete(callback);
       const cbm = this.unsubMap.get(callback);
       if (cbm) {
-          console.log("found unsub!")
           ent.cbs.delete(cbm);
           this.unsubMap.delete(callback);
       }
