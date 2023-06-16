@@ -6,7 +6,7 @@ import {
   getPublicKey,
 } from 'nostr-tools';
 import { ArcadeIdentity } from '../src/ident';
-import { ArcadeSocial, SocialGraph, SocialGraphEntry } from '../src/social';
+import { ArcadeSocial, SocialGraph } from '../src/social';
  
 const DEFAULT_RELAYS = [
   "wss://relay.arcade.city",
@@ -21,6 +21,12 @@ function getTestKeys() {
   const nsec = nip19.nsecEncode(sk);
   const npub = getPublicKey(sk);
   return [nsec, npub]
+}
+
+// select a random element from an iterable
+function randomPick(iterable){
+  const index = Math.floor(Math.random() * iterable.length);
+  return iterable[index];
 }
 
 describe('Tests for ArcadeSocial graph', () => {
@@ -52,15 +58,17 @@ describe('Tests for ArcadeSocial graph', () => {
     });
     return waitForGraph.then(value => {
       const graph = value as SocialGraph;
-      console.log(graph)
-      const keys = Object.keys(graph);
+      const pubkeys = Object.keys(graph);
+      const randomPubkey = randomPick(pubkeys);
       expect(graph).toBeDefined();
       // graph shouldn't contain the user
-      expect(keys).not.toContain(npub)
+      expect(pubkeys).not.toContain(npub)
       // graph shouldn't be empty
-      expect(keys.length).toBeGreaterThan(0);
-      // keys should be pubkeys
-      expect(keys[0].length).toBe(64);
+      expect(pubkeys.length).toBeGreaterThan(0);
+      // should be pubkeys
+      expect(randomPubkey.length).toBe(64);
+      // traverse should yield the right number of pubkeys
+      expect(graph[randomPubkey].degree ==  .traverse().length).toBe(graph[randomPubkey].size);
     });
   });
 });
