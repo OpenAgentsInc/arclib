@@ -30,6 +30,7 @@ export class ArcadeDb implements ArcadeDbInterface {
     const records = await this.db.execute(`select * from posts where ${or}`, args);
     const seen = new Set()
     records.forEach((ev: NostrEvent) => {
+        ev.tags = JSON.parse((ev.tags as unknown) as string)
         seen.add(ev.id)
     })
     for (const ev of this.queue.values()) {
