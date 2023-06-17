@@ -43,7 +43,6 @@ export class ArcadeDb implements ArcadeDbInterface {
         records.push(ev)
       }
     }
-    console.log("RETURNING:", records)
     return records
   }
 
