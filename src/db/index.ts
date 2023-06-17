@@ -9,6 +9,7 @@ declare module '.' {
         saveEvent(ev: NostrEvent): Promise<void>;
         saveEventSync(ev: NostrEvent): Promise<void>;
         flush(): Promise<void>;
+        reset(): Promise<void>;
     }
 }
 

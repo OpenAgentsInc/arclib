@@ -17,10 +17,15 @@ export class ArcadeDb implements ArcadeDbInterface {
   async open() {
     if (!this.db) {
       this.db = await open("arcade.1")
-      await this.db.execute(`create table if not exists posts (id string primary key, content string, 
+      await this.db.execute(`create table if not exists posts (id string not null primary key, content string, 
             kind integer, pubkey string, sig string, tags string, p1 string, e1 string, 
             created_at integer, verified boolean);`)
     }
+  }
+
+  async reset() {
+    await this.open()
+    await this.db.execute("delete from posts")
   }
 
   async list(filter: Filter[]): Promise<NostrEvent[]> {
