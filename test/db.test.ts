@@ -1,4 +1,4 @@
-import { connectDb, DbEvent } from '../src/db';
+import { connectDb } from '../src/db';
 
 describe('db: load events', () => {
   it('can can write and read events', async () => {
@@ -21,11 +21,8 @@ describe('db: load events', () => {
       created_at: 1,
     };
     const db = connectDb();
-    const p1 = await DbEvent.fromEvent(db, event1);
-    const p2 = await DbEvent.fromEvent(db, event2);
-    expect(p1.event_id).toEqual('test-id1');
-    expect(p2.event_id).toEqual('test-id2');
-
+    await db.saveEventSync(event1);
+    await db.saveEventSync(event2);
     console.log('query with a filter');
 
     expect((await db.list([{ ids: [event1.id] }]))[0].content).toEqual(

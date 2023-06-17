@@ -1,150 +1,77 @@
-import { Collection, Database, DatabaseAdapter, Model, Q } from '@nozbe/watermelondb';
-import { field, text, json } from '@nozbe/watermelondb/decorators';
-import { schemaMigrations } from '@nozbe/watermelondb/Schema/migrations';
-import SQLiteAdapter from '@nozbe/watermelondb/adapters/sqlite';
-import { AppSchema, TableName } from './schema';
 import { NostrEvent } from '../ident';
 import { Filter, matchFilter } from 'nostr-tools';
-import { Class } from '@nozbe/watermelondb/types';
+import { open } from 'any-sqlite'
+import { ArcadeDb as ArcadeDbInterface } from '.';
+import { Database } from 'any-sqlite/lib/types';
 
-export class DbEvent extends Model {
-  static table = TableName.EVENTS;
-
-  @field('event_id') event_id: string;
-  @text('content') content!: string;
-  @text('sig') sig: string;
-  @field('kind') kind: number;
-  @text('pubkey') pubkey: string;
-  @json('tags', (rawTags: string[][]): string[][] => {
-    return Array.isArray(rawTags) ? rawTags : [];
-  })
-  tags: string[][];
-  @field('created_at') created_at: number;
-  @field('verified') verified: boolean;
-  @field('e1') e1: string;
-  @field('p1') p1: string;
-
-
-  private static fillPost(post: DbEvent, event: NostrEvent, verified: boolean) {
-    post.event_id = event.id;
-    post.content = event.content;
-    post.sig = event.sig;
-    post.kind = event.kind ;
-    post.tags = event.tags;
-    post.pubkey = event.pubkey;
-    post.created_at = event.created_at;
-    post.verified = verified;
-    event.tags.forEach((tag) => {
-      if (tag[0] == 'e' && !post.e1) {
-        post.e1 = tag[1];
-      }
-      if (tag[0] == 'p' && !post.p1) {
-        post.p1 = tag[1];
-      }
-    });
-  }
-
-  public static prepareEvent(
-    db: Database,
-    event: NostrEvent,
-    verified = false
-  ): DbEvent {
-    const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
-    return posts.prepareCreate((post: DbEvent) => {
-        DbEvent.fillPost(post, event, verified);
-      });
-   }
- 
-  public static async fromEvent(
-    db: Database,
-    event: NostrEvent,
-    verified = false
-  ): Promise<DbEvent> {
-    const posts: Collection<DbEvent> = db.collections.get(DbEvent.table);
-    const have = await posts.query(Q.where('event_id', event.id)).fetch();
-
-    if (have.length) {
-      return have[0] as DbEvent;
-    }
-
-    return await db.write(async () => {
-      return await posts.create((post: DbEvent) => {
-        DbEvent.fillPost(post, event, verified);
-      });
-    });
-  }
-
-  asEvent(): NostrEvent {
-    return {
-      id: this.event_id,
-      kind: this.kind,
-      pubkey: this.pubkey,
-      sig: this.sig,
-      content: this.content,
-      tags: this.tags,
-      created_at: this.created_at,
-    };
-  }
-}
-
-export class ArcadeDb extends Database implements ArcadeDb {
+export class ArcadeDb implements ArcadeDbInterface {
   queue: Map<string, NostrEvent>
   timer: NodeJS.Timeout | null;
+  db: Database;
 
-  constructor(args: { adapter: SQLiteAdapter | DatabaseAdapter; modelClasses: (typeof DbEvent)[] | Class<Model>[] | Model[]; }) {
-    super(args);
+  constructor() {
     this.queue = new Map()
     this.timer = null
   }
 
+  async open() {
+    if (!this.db) {
+      this.db = await open("arcade.1")
+      await this.db.execute(`create table if not exists posts (id string primary key, content string, 
+            kind integer, pubkey string, sig string, tags string, p1 string, e1 string, 
+            created_at integer, verified boolean);`)
+    }
+  }
+
   async list(filter: Filter[]): Promise<NostrEvent[]> {
-    const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
-    const or: Q.Where = this.filterToQuery(filter);
-    const records = await posts.query(or).fetch();
+    await this.open()
+
+    const [or, args] = this.filterToQuery(filter);
+    const records = await this.db.execute(`select * from posts where ${or}`, args);
     const seen = new Set()
-    const els = records.map((ev: DbEvent) => {
-      if (!seen.has(ev.id)) {
+    records.forEach((ev: NostrEvent) => {
         seen.add(ev.id)
-        return ev.asEvent();
-      }
-    }).filter(e=>e) as NostrEvent[];
+    })
     for (const ev of this.queue.values()) {
       if (! seen.has(ev.id) && filter.some((f) => matchFilter(f, ev))) {
         seen.add(ev.id)
-        els.push(ev)
+        records.push(ev)
       }
     }
-    return els
+    return records
   }
 
   async latest(filter: Filter[]): Promise<number> {
-    const posts: Collection<DbEvent> = this.collections.get(DbEvent.table);
-    const or: Q.Where = this.filterToQuery(filter);
-    const records = await posts.query(or).fetch();
-    return records.length
-      ? records.reduce((prev, cur) => {
-          return cur && cur.created_at > prev.created_at ? cur : prev;
-        }).created_at
-      : 0;
+    await this.open()
+    const [or, args] = this.filterToQuery(filter);
+    const records = await this.db.execute(`select max(created_at) as max from posts where ${or}`, args)
+    return records.length ? records[0].max : 0
   }
 
-  private filterToQuery(filter: Filter[]) {
-    const or: Q.Where[] = [];
+  private filterToQuery(filter: Filter[]): [string, (string|number)[]]  {
+    const or: string[] = [];
+    const args: (string|number)[] = []
     filter.forEach((f) => {
-      const and: Q.Where[] = [];
+      const ins: [string, (string|number)[]][] = [];
       if (f.authors)
-        and.push(Q.where('pubkey', Q.oneOf(f.authors)))
+        ins.push(['pubkey', f.authors])
       if (f.ids)
-        and.push(Q.where('event_id', Q.oneOf(f.ids)))
+        ins.push(['id', f.ids])
       if (f.kinds)
-        and.push(Q.where('kind', Q.oneOf(f.kinds)))
+        ins.push(['kind', f.kinds])
       if (f['#e'])
-        and.push(Q.where('e1', Q.oneOf(f['#e'])))
+        ins.push(['e1', f['#e']])
       if (f['#p'])
-        and.push(Q.where('p1', Q.oneOf(f['#p'])))
-      or.push(Q.and(...and));
+        ins.push(['p1', f['#p']])
+      const and: string[] = ins.map((inop)=>{
+          const [fd, vals] = inop; 
+          const ph = Array(vals.length).fill('?').join(', ');
+          args.push(...vals);
+          return `(${fd} IN (${ph}))`;
+      })
+      or.push(and.join(' AND '));
     });
-    return Q.or(...or);
+    return [or.join(" or "), args]
   }
 
   async saveEvent(ev: NostrEvent) {
@@ -159,31 +86,42 @@ export class ArcadeDb extends Database implements ArcadeDb {
     this.timer = null
     if (t) clearTimeout(t)
     if (!this.queue) return
+    await this.open()
     const q = Array.from(this.queue.values())
     this.queue = new Map()
-    await this.write(async () => {
-      await this.batch(q.map((ev)=> {
-        return DbEvent.prepareEvent(this, ev, false)
-      }))
-    })
+    await this.db.batch(q.map((ev)=> {
+      return this.eventSql(ev);
+    }))
+  }
+
+  async saveEventSync(ev: NostrEvent) {
+    const [sql, args] = this.eventSql(ev)
+    await this.open()
+    await this.db.execute(sql, args)
+  }
+
+  eventSql(ev: NostrEvent): [string, (string|number|null)[]] {
+    let e1: string | null = null;
+    let p1: string | null = null;
+
+    ev.tags.forEach((tag) => {
+      if (tag[0] == 'e' && !e1) {
+        e1 = tag[1];
+      }
+      if (tag[0] == 'p' && !p1) {
+        p1 = tag[1];
+      }
+    });
+
+    return [`insert into posts (id, pubkey, content, sig, kind, tags, p1, e1, created_at, verified) 
+             values (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+             on conflict (id) do nothing`,
+            [ev.id, ev.pubkey, ev.content, ev.sig, ev.kind, JSON.stringify(ev.tags), p1, e1, ev.created_at, 0]
+          ];
   }
 }
 
 export function connectDb(): ArcadeDb {
-  const adapter = new SQLiteAdapter({
-    schema: AppSchema,
-    migrations: schemaMigrations({
-      migrations: [],
-    }),
-    onSetUpError: (error: unknown): void => {
-      console.log('setup error', error);
-    },
-  });
-
-  const db = new ArcadeDb({
-    adapter,
-    modelClasses: [DbEvent],
-  });
-
+  const db = new ArcadeDb();
   return db;
 }
