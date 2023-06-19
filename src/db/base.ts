@@ -32,7 +32,11 @@ export class ArcadeDb implements ArcadeDbInterface {
     await this.open()
 
     const [or, args] = this.filterToQuery(filter);
-    const records = await this.db.execute(`select * from posts where ${or}`, args);
+    const limit = filter && filter[0].limit
+    const where = or.trim() ? `where ${or}` : "";
+    const limitQ = (!limit || isNaN(limit)) ? "" : ` limit ${limit}`; 
+    const sql = `select * from posts ${where} ${limitQ}`
+    const records = await this.db.execute(sql, args);
     const seen = new Set()
     records.forEach((ev: NostrEvent) => {
         try {

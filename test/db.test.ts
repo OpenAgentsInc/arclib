@@ -36,5 +36,7 @@ describe('db: load events', () => {
     expect((await db.list([{ '#e': ['reply-to1'] }]))[0].content).toEqual(
       'test-content1'
     );
+    
+    expect((await db.list([{ limit: 1 }])).length).toEqual(1);
   });
 });
