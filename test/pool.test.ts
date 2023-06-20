@@ -49,6 +49,7 @@ describe('NostrPool', () => {
 
   it('can integrate storage', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     const pool2 = new NostrPool(ident);
     if (!pool1.db) throw Error;
@@ -97,6 +98,7 @@ describe('NostrPool', () => {
 
   it('notifys me', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     await pool1.setRelays(relays);
 
@@ -117,6 +119,7 @@ describe('NostrPool', () => {
 
   it('db keeps track even after list is done', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     if (!pool1.db) throw Error;
     await pool1.setRelays(relays);
@@ -142,6 +145,7 @@ describe('NostrPool', () => {
 
   it('queries for new stuff only', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     if (!pool1.db) throw Error;
     await pool1.setRelays(relays);
