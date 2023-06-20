@@ -102,13 +102,13 @@ export class ArcadeIdentity {
     );
   }
 
-  async nip04XEncrypt(
+  async nip04XEncryptSS(
     privkey: string,
     pubkey: string,
     content: string,
     version: number = CURRENT_ENCRYPTION_VERSION,
     iv?: Uint8Array
-  ): Promise<string> {
+  ): Promise<[Uint8Array, string]> {
     const key = secp256k1.getSharedSecret(privkey, '02' + pubkey);
     const normalizedKey = key.slice(1, 33);
     iv = iv ?? randomBytes(16);
@@ -132,7 +132,17 @@ export class ArcadeIdentity {
     const ctb64 = base64.encode(new Uint8Array(ciphertext));
     const ivb64 = base64.encode(new Uint8Array(iv.buffer));
 
-    return ctb64 + '??' + ivb64 + '??' + version.toString();
+    return [normalizedKey, ctb64 + '??' + ivb64 + '??' + version.toString()];
+  }
+
+  async nip04XEncrypt(
+    privkey: string,
+    pubkey: string,
+    content: string,
+    version: number = CURRENT_ENCRYPTION_VERSION,
+    iv?: Uint8Array
+  ): Promise<string> {
+    return (await this.nip04XEncryptSS(privkey, pubkey, content, version, iv))[1]
   }
 
   async nip04XDecrypt(
@@ -167,6 +177,48 @@ export class ArcadeIdentity {
     const text = utf8Decoder.decode(plaintext);
 
     return text;
+  }
+
+  nip44XIdent(
+    pubkey: string,
+  ): ArcadeIdentity {
+    const key = secp256k1.getSharedSecret(this.privKey, '02' + pubkey);
+    const ss = key.slice(1, 33);
+    return new ArcadeIdentity(utils.bytesToHex(ss))
+  }
+
+  async nip44XEncrypt(
+    pubkey: string,
+    content: string,
+    version: number = CURRENT_ENCRYPTION_VERSION
+  ): Promise<NostrEvent> {
+    const [ss, encrypted] = await this.nip04XEncryptSS(
+      this.privKey,
+      pubkey,
+      content,
+      version,
+    );
+    const tmpId = new ArcadeIdentity(utils.bytesToHex(ss))
+    const unsigned = {
+      kind: 4,
+      content: encrypted,
+      pubkey: tmpId.pubKey,
+      created_at: Math.floor(Date.now()/1000),
+      tags: [['p', pubkey]],
+    };
+    const signed = await tmpId.signEvent(unsigned);
+    return signed;
+  }
+
+  async nip44XDecrypt(
+    pubkey: string,
+    content: string
+  ): Promise<string> {
+    return await this.nip04XDecrypt(
+      this.privKey,
+      pubkey,
+      content
+    )
   }
 
   async nipXXEncrypt(

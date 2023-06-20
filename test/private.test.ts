@@ -38,19 +38,17 @@ test('dm:simple', async () => {
   pool2.close();
 });
 
-test('dm:directed', async () => {
+test('dm:directed 44x', async () => {
   const pool1 = new NostrPool(ident1);
   const pool2 = new NostrPool(ident2);
   await pool1.setRelays(relays);
   await pool2.setRelays(relays);
   const dms1 = new PrivateMessageManager(pool1);
   const dms2 = new PrivateMessageManager(pool2);
-  await dms1.sendXX(ident2.pubKey, {
-    kind: 4,
-    content: 'yo',
-    tags: [['p', ident2.pubKey]],
-  });
-  assert((await dms2.list())[0].content == 'yo');
+  const ev = await dms1.send44X(ident2.pubKey, "yo")
+  console.log(ev)
+  assert((await dms2.list({}, false, ident1.pubKey))[0].content == 'yo');
+  assert((await dms1.list({}, false, ident2.pubKey))[0].content == 'yo');
   pool1.close();
   pool2.close();
 });
