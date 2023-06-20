@@ -74,7 +74,8 @@ describe('ident:', () => {
     );
     const event = await alice.nip44XEncrypt(bob.pubKey, "data")
     const dec = await bob.nip44XDecrypt(alice.pubKey, event.content)
-    expect(dec).toEqual("data")
+    expect(dec.content).toEqual("data")
+    expect(dec.pubkey).toEqual(alice.pubKey)
   })
 
   it('returns a valid ArcadeEvent', async () => {
