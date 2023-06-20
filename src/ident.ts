@@ -195,7 +195,7 @@ export class ArcadeIdentity {
     const [ss, encrypted] = await this.nip04XEncryptSS(
       this.privKey,
       pubkey,
-      content,
+      JSON.stringify({pubkey: this.pubKey, content}),
       version,
     );
     const tmpId = new ArcadeIdentity(utils.bytesToHex(ss))
@@ -204,7 +204,7 @@ export class ArcadeIdentity {
       content: encrypted,
       pubkey: tmpId.pubKey,
       created_at: Math.floor(Date.now()/1000),
-      tags: [['p', pubkey]],
+      tags: []
     };
     const signed = await tmpId.signEvent(unsigned);
     return signed;
@@ -213,12 +213,12 @@ export class ArcadeIdentity {
   async nip44XDecrypt(
     pubkey: string,
     content: string
-  ): Promise<string> {
-    return await this.nip04XDecrypt(
+  ): Promise<{content: string, pubkey: string}> {
+    return JSON.parse(await this.nip04XDecrypt(
       this.privKey,
       pubkey,
       content
-    )
+    ))
   }
 
   async nipXXEncrypt(

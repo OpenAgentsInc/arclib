@@ -75,11 +75,14 @@ export class PrivateMessageManager {
             if (!pubkey) {
               console.log("can't decrypt if we don't know the channel")
               throw Error("can't decrypt without channel pubkey")
+            } else {
+              const {content, pubkey: author} = await this.pool.ident.nip44XDecrypt(
+                pubkey,
+                ev.content
+              );
+              ev.content = content
+              ev.pubkey = author
             }
-            ev.content = await this.pool.ident.nip44XDecrypt(
-              pubkey,
-              ev.content
-            );
           } else {
             ev.content = await this.pool.ident.nip04Decrypt(
               ev.pubkey,
@@ -131,13 +134,18 @@ export class PrivateMessageManager {
       { kinds: [4], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
-      const tmpId = this.pool.ident.nip44XIdent(pubkey)
-      filter_ex[0].authors = [pubkey, tmpId.pubKey]
+      filter_ex[0].authors = [pubkey]
 
       filter_ex.push({
         kinds: [4],
-        authors: [this.pool.ident.pubKey, tmpId.pubKey],
+        authors: [this.pool.ident.pubKey],
         '#p': [pubkey],
+      });
+      
+      const tmpId = this.pool.ident.nip44XIdent(pubkey)
+      filter_ex.push({
+        kinds: [4],
+        authors: [tmpId.pubKey]
       });
     }
     return filter_ex;
