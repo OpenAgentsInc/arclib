@@ -69,7 +69,7 @@ export class PrivateMessageManager {
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
-          ev = await this.pool.ident.nipXXDecrypt(ev);
+          ev = {...await this.pool.ident.nipXXDecrypt(ev), blinded: false};
         } else {
           if (ev.content.endsWith("??1")) {
             if (!pubkey) {
