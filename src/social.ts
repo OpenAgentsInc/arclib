@@ -3,7 +3,7 @@ import { NostrPool } from "./pool";
 import { EventTemplate, Filter } from "nostr-tools";
 
 const STALE_GRAPH = 1000 * 60 * 60 * 24 * 7 // 1 week
-const GRAPH_DEPTH = 3
+const GRAPH_DEPTH = 2
 
 // define a nip02 tag type
 type NIP02Contact = string[];
@@ -113,9 +113,20 @@ export class ArcadeSocial {
       return;
     }
     const events: EventTemplate[] = [];
+
+    // get event handler storeContacts for pool subscription
     const storeContacts = validateContacts(events);
+
+    // set up a filter for pool subscription
     const filter: Filter<number> = { kinds: [3,0], authors: [pubkey] };
+
     this.pool.sub([filter], storeContacts, () => {
+      // this is the EOSE callback
+      if (events.length === 0) {
+        // no events were received
+        console.warn('no events received for', pubkey)
+        this.iterateGraph()
+      }
       events.sort((a, b) => b.created_at - a.created_at)
       try {
         this.buildGraph(pubkey, events[0].tags, degree)
@@ -178,8 +189,16 @@ export class ArcadeSocial {
   iterateGraph() {
     const now = Date.now()
     const graphKeys = Object.keys(this.socialGraph)
+    if (graphKeys.length === 0) {
+      // the first pubkey yielded no contacts. We're done.
+      console.warn('Please supply a pubkey with contacts to build a social graph.')
+      this.pausedOnKey = null
+      this.pausedOnDegree = 1
+      return
+    }
     if (this.iteration >= graphKeys.length) {
-      // we've completed the graph. start over
+      // we've completed the graph. start over to continue refreshing it.
+      // this process will stop when someone calls .pause()
       this.iteration = 1
     }
     // get contact
@@ -207,28 +226,12 @@ export class ArcadeSocial {
     return Object.keys(this.socialGraph).sort( (a,b) => this.socialGraph[b].lastUpdated - this.socialGraph[a].lastUpdated ).map( pk => `${(((+new Date()) - this.socialGraph[pk].lastUpdated)/1000/60).toFixed(1) + 'm ago'} - 0x${pk.substring(0,6)} ` )
   }
   /**
-   * analyze the social graph as it is built
-   * Debug console only.
+   * Given a pubkey, return the pubkeys between you and it or an empty array if none.
+   * Your own pubkey and the given pubkey are omitted from the array.
+   * @param pubkey 
+   * @returns array hops between you and pubkey
    */
-  // analyze(){
-  //   var degrees = {};
-  //   Object.keys(this.socialGraph).map(s => degrees[this.socialGraph[s].degree] = degrees[this.socialGraph[s].degree] ? degrees[this.socialGraph[s].degree] + 1 : 1)
-
-  //   console.log('count of each degree', degrees)
-
-  //   // sort top 10 fwf contacts
-  //   // return their pubkey and fwf value
-  //   const top10 = Object.keys(this.socialGraph)
-  //     .map(s => this.socialGraph[s])
-  //     .sort((a, b) => b.fwf - a.fwf)
-  //     .slice(0, 10)
-  //     .map(s => ({ pubkey: s.pubkey, fwf: s.fwf }))
-  //   console.log('top 10 fwf contacts', top10)
-
-  // }
-  // given a pubkey, return the pubkeys between it and the root or an empty array if none
-  // the pubkeys will be in the order of closest to your pubkey to closest to the target pubkey
-  traverse(pubkey: string) {
+  hops(pubkey: string) {
     const path = []
     let current = this.socialGraph[pubkey]
     while (current.degree > 1) {
@@ -236,6 +239,23 @@ export class ArcadeSocial {
       current = this.socialGraph[current.connection]
     }
     return path
+  }
+  /**
+   * Social Distance from you to your pubkey is 0. Distance to someone you follow (friend) is 1. Distance to their friend is 2. Distances beyond this or unknown distances are 3.
+   * @param pubkey 
+   * @returns number - social distance from you to pubkey
+   */
+  distance(pubkey: string) {
+    if (pubkey === this.ident.pubKey) return 0
+    if (!this.socialGraph[pubkey]) return 3
+    if (this.socialGraph[pubkey]) return this.socialGraph[pubkey].degree
+    return this.socialGraph[pubkey].degree
+  }
+
+  weight(pubkey: string){
+    const distance = this.distance(pubkey)
+    if (distance === 0) return 10_000
+    return 1 / distance * distance
   }
 }
 

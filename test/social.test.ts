@@ -1,3 +1,7 @@
+/**
+ * Run the following to test only this file:
+ * $ yarn dts test ./test/social.test.ts
+ */
 import 'websocket-polyfill';
 import { NostrPool } from "../src/pool";
 import {
@@ -24,7 +28,7 @@ function getTestKeys() {
 }
 
 // select a random element from an iterable
-function randomPick(iterable){
+function randomPick(iterable: Array<string>){
   const index = Math.floor(Math.random() * iterable.length);
   return iterable[index];
 }
@@ -36,10 +40,10 @@ describe('Tests for ArcadeSocial graph', () => {
   ident.pubKey = 'e8ed3798c6ffebffa08501ac39e271662bfd160f688f94c45d692d8767dd345a';
   const pool = new NostrPool(ident);
   pool.setRelays(DEFAULT_RELAYS);
+  const arcadeSocial = new ArcadeSocial(pool, ident);
 
   it('starts building a graph automatically',() => {
-    expect.assertions(4);
-    const arcadeSocial = new ArcadeSocial(pool, ident);
+    expect.assertions(8);
     const waitForGraph = new Promise((resolve, reject) => {
       let count = 0;
       // eslint-disable-next-line @typescript-eslint/no-unused-vars
@@ -58,8 +62,8 @@ describe('Tests for ArcadeSocial graph', () => {
     });
     return waitForGraph.then(value => {
       const graph = value as SocialGraph;
-      const pubkeys = Object.keys(graph);
-      const randomPubkey = randomPick(pubkeys);
+      const pubkeys: Array<string> = Object.keys(graph);
+      const randomPubkey: string = randomPick(pubkeys);
       expect(graph).toBeDefined();
       // graph shouldn't contain the user
       expect(pubkeys).not.toContain(npub)
@@ -67,48 +71,14 @@ describe('Tests for ArcadeSocial graph', () => {
       expect(pubkeys.length).toBeGreaterThan(0);
       // should be pubkeys
       expect(randomPubkey.length).toBe(64);
-      // traverse should yield the right number of pubkeys
-      expect(graph[randomPubkey].degree ==  .traverse().length).toBe(graph[randomPubkey].size);
+      // social distance to self should be 0
+      expect(arcadeSocial.distance(ident.pubKey)).toEqual(0);
+      // social distance to guy swan should be 1
+      expect(arcadeSocial.distance("b9e76546ba06456ed301d9e52bc49fa48e70a6bf2282be7a1ae72947612023dc")).toEqual(1);
+      // social distance to umbrel should be 2
+      expect(arcadeSocial.distance("ea2e3c814d08a378f8a5b8faecb2884d05855975c5ca4b5c25e2d6f936286f14")).toEqual(2);
+      // social distance to newly generated pubkey should be 3
+      expect(arcadeSocial.distance("84ac01809888b0ec74da0cc21dad839248f69cf4007c90ab2c56c21fa0eff545")).toEqual(3);
     });
   });
 });
-
-
-
-
-// import { ArcadeSocial, isValidNIP02Contact } from './arcadeSocial';  // adjust the import path to the actual one
-
-// // Example values
-// const poolExample = new NostrPool();
-// const identExample = new ArcadeIdentity();
-
-// describe('ArcadeSocial', () => {
-//   let arcadeSocial;
-
-//   beforeEach(() => {
-//     arcadeSocial = new ArcadeSocial(poolExample, identExample);
-//   });
-
-//   it('should initialize correctly', () => {
-//     expect(arcadeSocial.pool).toEqual(poolExample);
-//     expect(arcadeSocial.ident).toEqual(identExample);
-//     expect(arcadeSocial.socialGraph).toEqual({});
-//     expect(arcadeSocial.iteration).toEqual(0);
-//   });
-
-//   // Add more test cases here...
-// });
-
-// describe('isValidNIP02Contact', () => {
-//   it('should return true for valid contact', () => {
-//     const contact = ['p', 'a'.repeat(64)];
-//     expect(isValidNIP02Contact(contact)).toBeTruthy();
-//   });
-
-//   it('should return false for invalid contact', () => {
-//     const contact = ['p', 'a'.repeat(63)];
-//     expect(isValidNIP02Contact(contact)).toBeFalsy();
-//   });
-
-//   // Add more test cases here...
-// });
