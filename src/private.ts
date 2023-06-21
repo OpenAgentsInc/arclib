@@ -65,7 +65,7 @@ export class PrivateMessageManager {
   }
 
   async decrypt(evx: NostrEvent, pubkey?: string) {
-    let ev = {...evx}
+    let ev = {...evx, blinded: false}
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
@@ -82,6 +82,7 @@ export class PrivateMessageManager {
               );
               ev.content = content
               ev.pubkey = author
+              ev.blinded = true
             }
           } else {
             ev.content = await this.pool.ident.nip04Decrypt(
