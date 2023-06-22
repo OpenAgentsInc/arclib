@@ -188,7 +188,7 @@ export class EncChannel {
     const epriv = generatePrivateKey();
     const tmp_ident = new ArcadeIdentity(epriv);
     // skipping kind here, cuz it makes indexing suck
-    const inner = { content: content, tags: tags };
+    const inner = { content: content, tags: tags, pubkey: this.pool.ident.pubKey };
     const message = {
       kind: 402,
       content: await this.pool.ident.nip04XEncrypt(
@@ -240,6 +240,8 @@ export class EncChannel {
       if (dec) {
         if (unwrap) {
           const js = JSON.parse(dec);
+          if (js.pubkey)
+              ev.pubkey = js.pubkey;
           ev.content = js.content;
           ev.tags = js.tags;
         } else {
