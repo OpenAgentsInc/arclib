@@ -17,7 +17,7 @@ function getTestKeys() {
   return [ nsec, npub ]
 }
 
-describe('signEvent', () => {
+describe('ident:', () => {
   const [ nsec, npub ] = getTestKeys();
 
   it('can nipxxencrypt', async () => {
@@ -62,6 +62,20 @@ describe('signEvent', () => {
     const content = await bob.selfEncrypt("data")
     const dec = await bob.selfDecrypt(content)
     expect(dec).toEqual("data")
+  })
+
+  it('can 44x encrypt', async () => {
+    const alice = new ArcadeIdentity(
+      nsec
+    );
+    const sk = generatePrivateKey();
+    const bob = new ArcadeIdentity(
+     sk
+    );
+    const event = await alice.nip44XEncrypt(bob.pubKey, "data")
+    const dec = await bob.nip44XDecrypt(alice.pubKey, event.content)
+    expect(dec.content).toEqual("data")
+    expect(dec.pubkey).toEqual(alice.pubKey)
   })
 
   it('returns a valid ArcadeEvent', async () => {
