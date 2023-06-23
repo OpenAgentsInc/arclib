@@ -11,6 +11,7 @@ export class ProfileManager {
 
   async save(prof: Profile, private_keys: string[]) {
     const data = {...prof}
+    private_keys += ["private"]
     const private_settings: Profile = {}
     for (const key of private_keys) {
         if (key in data) {
