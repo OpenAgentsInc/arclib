@@ -1,14 +1,12 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
 require('websocket-polyfill');
-Object.assign(global, { crypto: require('crypto') });
+Object.assign(global, { crypto: require('crypto').webcrypto });
 
 import NostrMini from 'nostrmini';
 
-import { NostrPool, ArcadeIdentity, NostrEvent } from '../src';
-import { strict as assert } from 'assert';
-import { PrivateMessageManager } from '../src/private';
-import { ContactManager } from '../src/contacts';
+import { NostrPool, ArcadeIdentity } from '../src';
+import { ContactManager, Contact } from '../src/contacts';
 
 const ident = ArcadeIdentity.generate();
 const ct1 = ArcadeIdentity.generate();
@@ -30,7 +28,7 @@ afterAll(async () => {
 
 test('contact:basic', async () => {
   const contacts = new ContactManager(pool);
-  let res = []
+  let res: Contact[] = []
 
   await contacts.add({pubkey: ct1.pubKey, secret: false, legacy: false})
   
@@ -43,30 +41,42 @@ test('contact:basic', async () => {
   
   await contacts.add({pubkey: ct2.pubKey, secret: false, legacy: false})
   res = await contacts.list()
-  expect(res[0].length).toEqual(2)
+  expect(res.length).toEqual(2)
   
   await contacts.readContacts()
   await contacts.add({pubkey: ct2.pubKey, secret: false, legacy: false})
   res = await contacts.list()
-  expect(res[0].length).toEqual(2)
+  expect(res.length).toEqual(2)
   await contacts.remove(ct1.pubKey)
   await contacts.readContacts()
   res = await contacts.list()
+  
   expect(res[0]).toEqual({pubkey: ct2.pubKey, secret: false, legacy: false})
+  
+  await contacts.remove(ct2.pubKey)
+  await contacts.readContacts()
+  res = await contacts.list()
+  expect(res.length).toEqual(0)
 });
 
 test('contact:secret', async () => {
+  pool.ident = ArcadeIdentity.generate();
   const contacts = new ContactManager(pool);
+  let res = await contacts.list()
+  expect(res.length).toEqual(0)
   await contacts.add({pubkey: ct1.pubKey, secret: true, legacy: false})
   await contacts.readContacts()
-  const res = await contacts.list()
-  expect(res[0]).toEqual({pubkey: ct2.pubKey, secret: true, legacy: false})
+  res = await contacts.list()
+  expect(res[0]).toEqual({pubkey: ct1.pubKey, secret: true, legacy: false})
+  await contacts.remove(ct1.pubKey)
 });
 
 test('contact:legacy', async () => {
+  pool.ident = ArcadeIdentity.generate();
   const contacts = new ContactManager(pool);
   await contacts.add({pubkey: ct1.pubKey, secret: false, legacy: true})
   await contacts.readContacts()
   const res = await contacts.list()
-  expect(res[0]).toEqual({pubkey: ct2.pubKey, secret: false, legacy: true})
+  expect(res[0]).toEqual({pubkey: ct1.pubKey, secret: false, legacy: true})
+  await contacts.remove(ct1.pubKey)
 });

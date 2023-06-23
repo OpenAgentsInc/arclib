@@ -2,13 +2,13 @@
 
 import { NostrPool } from '.';
 
-class Contact {
+export class Contact {
   pubkey: string;
   secret: boolean;
   legacy: boolean;
 }
 
-type PrivList = Array<[string, Record<string, string|number|null>]>;
+type PrivList = Array<[string, Record<string, string|number|null|boolean>]>;
 
 export class ContactManager {
   private pool: NostrPool;
@@ -28,7 +28,7 @@ export class ContactManager {
     if (has && has.secret == contact.secret && has.legacy == contact.legacy)
       return 
       
-    this.contacts[contact.pubkey] = contact
+    this.contacts.set(contact.pubkey, contact)
     await this.write()
   }
 
@@ -42,7 +42,7 @@ export class ContactManager {
   }
   
   async write() {
-    const secretContacts = Array.from(this.contacts.values()).filter(e=>e.secret).map(e=>[e.pubkey, {legacy: e.legacy, secret: e.secret}])
+    const secretContacts = Array.from(this.contacts.values()).filter(e=>e.secret||e.legacy).map(e=>[e.pubkey, {legacy: e.legacy, secret: e.secret}])
     const publicContacts = Array.from(this.contacts.values()).filter(e=>!e.secret).map(e=>["p", e.pubkey])
     await this.pool.send({
       content: "",
@@ -59,16 +59,16 @@ export class ContactManager {
   async list(): Promise<Contact[]> {
     if (!this.hasRead) {
       await this.read()
+      this.hasRead = true
     }
     return Array.from(this.contacts.values())
   }
 
   async read(): Promise<void> {
-      this.contacts = new Map((await this.readContacts()).map(e=>[e.pubkey, e]))
-      this.hasRead = true
+      this.contacts = await this.readContacts()
   }
 
-  async readContacts(): Promise<Contact[]> {
+  async readContacts(): Promise<Map<string, Contact>> {
     const pubR = await this.pool.list([{
       authors: [this.pool.ident.pubKey],
       kinds: [3],
@@ -79,20 +79,26 @@ export class ContactManager {
       kinds: [20003],
       limit: 1
     }])
+    
+    const contacts: Map<string, Contact> = new Map()
 
-    const res = []
     if (pubR && pubR[0] && pubR[0].tags) {
-      res.push(...pubR[0].tags.filter(tag=>tag[0]=="p").map(tag=>{return {pubkey: tag[1], secret: false, legacy: false}}))
+      pubR[0].tags.filter(tag=>tag[0]=="p").forEach(tag=>{
+          contacts.set(tag[1], {pubkey: tag[1], secret: false, legacy: false})
+      })
     }
 
     if (privR && privR[0] && privR[0].content) {
       try {
         const privC: PrivList = JSON.parse(await this.pool.ident.selfDecrypt(privR[0].content))
-        res.push(...privC.map(ent=>{return {pubkey: ent[0], secret: ent[1].secret, legacy: ent[1].legacy}}))
+        privC.forEach(ent=>{ 
+          contacts.set(ent[0], {pubkey: ent[0], secret: ent[1].secret as boolean, legacy: ent[1].legacy as boolean})
+        })
       } catch (e) {
         console.log("can't load private contacts", e)
       }
     }
-    return res
+
+    return contacts
   }
 }
