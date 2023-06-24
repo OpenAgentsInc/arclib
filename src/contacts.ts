@@ -14,7 +14,7 @@ export class ContactManager {
   private pool: NostrPool;
   public contacts: Map<string, Contact>
   lastRead: number;
-  hasRead: boolean = false;
+  hasRead = false;
   
   //  private store: SqliteStore;
 

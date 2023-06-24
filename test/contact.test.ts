@@ -1,4 +1,4 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
 
 require('websocket-polyfill');
 Object.assign(global, { crypto: require('crypto').webcrypto });
