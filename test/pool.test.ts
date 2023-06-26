@@ -44,6 +44,9 @@ describe('NostrPool', () => {
     await wait;
     pool.stop();
     console.log('stopping pool');
+    const ev2 = await pool.get([{ kinds: [1], authors: [ident.pubKey] }]);
+    expect(ev2?.content).toEqual('yo')
+    expect(ev2?.id).toEqual(event.id)
     await pool.close();
   });
 

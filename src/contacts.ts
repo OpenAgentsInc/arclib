@@ -36,7 +36,12 @@ export class ContactManager {
   async has(pubkey: string) {
     return this.contacts.get(pubkey)
   }
- 
+
+  async get(pubkey: string) {
+    await this.maybeRead()
+    return this.contacts.get(pubkey)
+  }
+
   async remove(pubkey: string) {
     const has = this.contacts.get(pubkey)
     if (!has)
@@ -62,11 +67,15 @@ export class ContactManager {
     })
   }
 
-  async list(): Promise<Contact[]> {
+  async maybeRead() {
     if (!this.hasRead) {
       await this.read()
       this.hasRead = true
     }
+  }
+
+  async list(): Promise<Contact[]> {
+    await this.maybeRead()
     return Array.from(this.contacts.values())
   }
 

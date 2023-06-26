@@ -68,7 +68,7 @@ test('contact:secret', async () => {
   await contacts.readContacts()
   res = await contacts.list()
   expect(res[0]).toEqual({pubkey: ct1.pubKey, secret: true, legacy: false})
-  const g = await contacts.get(ct1.pubKEy)
+  const g = await contacts.get(ct1.pubKey)
   expect(g).toEqual({pubkey: ct1.pubKey, secret: true, legacy: false})
   await contacts.remove(ct1.pubKey)
 });
