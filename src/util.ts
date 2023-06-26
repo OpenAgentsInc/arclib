@@ -3,7 +3,7 @@ export const objectId = (() => {
   let currentId = 0;
   const map = new WeakMap();
 
-  return (object) => {
+  return (object: unknown) => {
       if (!map.has(object)) {
           map.set(object, ++currentId);
       }
