@@ -32,6 +32,14 @@ export class NostrPool {
     this.filters = new Map<string, SubInfo>();
   }
 
+  async get(filters: Filter<number>[], 
+             db_only = false 
+            ): Promise<NostrEvent|undefined> {
+    const lst = await this.list(filters, db_only)
+    const max = lst.reduce((best, cur)=>{return (cur.created_at > best.created_at) ? cur : best}, lst[0])
+    return max
+  }
+
   async list(filters: Filter<number>[], 
              db_only = false, 
              callback?: (ev: NostrEvent)=>Promise<void>, 
