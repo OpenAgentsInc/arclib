@@ -1,12 +1,43 @@
 import type { ArcadeDb } from './db';
 import { ArcadeIdentity, NostrEvent, UnsignedEvent } from './ident';
-import { SimplePool, Filter, SubscriptionOptions, Sub, Pub } from 'nostr-tools';
+import { SimplePool, Filter, SubscriptionOptions, Sub, Pub, Relay } from 'nostr-tools';
 
 interface SubInfo {
   sub: Sub;
   eose_seen: boolean;
   cbs: Set<(event: NostrEvent) => void>;
   last_hit: number;
+}
+
+export class ReconnPool extends SimplePool {
+  keepClosed: Set<string>
+  reconnectTimeout: number;
+
+  constructor(opts: { eoseSubTimeout?: number; getTimeout?: number, reconnectTimeout?: number } = {}) {
+    super(opts)
+    this.keepClosed = new Set()
+    this.reconnectTimeout=this.reconnectTimeout||5000
+  }
+
+  async ensureRelay(url: string): Promise<Relay> {
+    this.keepClosed.delete(url)
+    const r: Relay = await super.ensureRelay(url)
+    r.on('disconnect', () => {
+      console.error("lost connection", url)
+      setTimeout(() => {
+        if (!this.keepClosed.has(url)) {
+          console.error("reconnect", url)
+          this.ensureRelay(url)
+        }
+      }, this.reconnectTimeout)
+    })
+    return r
+  }
+
+  async close(relays: string[]) {
+    relays.forEach(val=>this.keepClosed.add(val))
+    super.close(relays)
+  }
 }
 
 // very thin wrapper using SimplePool + ArcadeIdentity
@@ -25,11 +56,15 @@ export class NostrPool {
 
   constructor(ident: ArcadeIdentity, db?: ArcadeDb) {
     this.ident = ident;
-    const pool = new SimplePool();
+    const pool = new ReconnPool();
     this.pool = pool;
     this.unsubMap = new Map<(ev: NostrEvent)=>void, (ev: NostrEvent)=>void>();
     this.db = db;
     this.filters = new Map<string, SubInfo>();
+  }
+
+  async getRelay(uri: string): Promise<Relay> {
+    return await this.pool.ensureRelay(uri)
   }
 
   async get(filters: Filter<number>[], 
@@ -94,6 +129,7 @@ export class NostrPool {
   }
 
   async setRelays(relays: string[]): Promise<void> {
+    this.pool.keepClosed = new Set(this.relays)
     this.relays = relays;
     await Promise.all(
       relays.map((url) => {
