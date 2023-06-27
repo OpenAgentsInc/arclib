@@ -145,13 +145,15 @@ export class Nip28Channel {
     channel_id: string,
     filter: Filter = {},
     db_only = false,
-    callback?: (ev:NostrEvent)=>Promise<void>
+    callback?: (ev:NostrEvent)=>Promise<void>,
+    cbkey?: any
   ): Promise<NostrEvent[]> {
     if (!channel_id) throw new Error('channel id is required');
     return this.pool.list(
       [{ kinds: [42], '#e': [channel_id], ...filter }],
       db_only,
-      callback
+      callback,
+      cbkey
     );
   }
 

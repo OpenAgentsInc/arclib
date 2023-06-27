@@ -1,10 +1,11 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Filter, matchFilter, nip04 } from 'nostr-tools';
+import { Filter, matchFilter } from 'nostr-tools';
+import { nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 import { LRUCache } from 'lru-cache'
 
-type BlindedEvent = NostrEvent & {blinded: boolean}
+export type BlindedEvent = NostrEvent & {blinded: boolean}
 const decryptCache = new LRUCache<string, BlindedEvent>({max: 1000})
 
 export class PrivateMessageManager {
@@ -119,14 +120,15 @@ export class PrivateMessageManager {
     filter?: Filter,
     db_only = false,
     pubkey?: string,
-    callback?: (ev:NostrEvent)=>Promise<void>
-  ): Promise<NostrEvent[]> {
+    callback?: (ev:NostrEvent)=>Promise<void>,
+    cbkey?: any
+  ): Promise<BlindedEvent[]> {
     const filter_ex: Filter<number>[] = this.filter(pubkey);
     let cb = callback
     if (callback) {
         cb = async (ev:NostrEvent)=>{const evx = await this.decrypt(ev, pubkey); if (evx) {await callback(evx)}}
     }
-    const lst = await this.pool.list(filter_ex, db_only, cb, callback);
+    const lst = await this.pool.list(filter_ex, db_only, cb, cbkey || callback);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
         return (!filter || matchFilter(filter, ev)) ? await this.decrypt(ev, pubkey) : null;
@@ -135,7 +137,7 @@ export class PrivateMessageManager {
 
     return mapped.filter((ev: BlindedEvent | null) => {
       return ev;
-    }) as NostrEvent[];
+    })
   }
 
   public filter(pubkey?: string) {

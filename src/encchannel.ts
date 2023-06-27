@@ -262,7 +262,8 @@ export class EncChannel {
     channel: {id: string, privkey: string},
     filter: Filter = {},
     db_only = false,
-    callback?: (ev:NostrEvent)=>Promise<void>
+    callback?: (ev:NostrEvent)=>Promise<void>,
+    cbkey?: any
   ): Promise<NostrEvent[]> {
     if (!channel.id) throw new Error('channel id is required');
 
@@ -273,7 +274,8 @@ export class EncChannel {
         const dec = await this.decrypt(channel, ev)
         if (dec)
           callback(ev)
-      })
+      }),
+      cbkey || callback
     );
 
     const map = await Promise.all(

@@ -156,6 +156,7 @@ export class ChannelManager {
     db_only?: boolean;
     privkey?: string;
     callback?: (ev:NostrEvent)=>Promise<void>;
+    cbkey?: any
   }): Promise<NostrEvent[]> {
     if (info.privkey) {
       return await this.enc.list(
@@ -165,7 +166,8 @@ export class ChannelManager {
         },
         info.filter,
         info.db_only,
-        info.callback
+        info.callback,
+        info.cbkey
       );
     } else {
       return await this.nip28.list(info.channel_id, info.filter, info.db_only);
