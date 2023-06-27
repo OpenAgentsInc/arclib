@@ -4,7 +4,8 @@ import { Filter, matchFilter, nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 import { LRUCache } from 'lru-cache'
 
-const decryptCache = new LRUCache<string, NostrEvent>({max: 1000})
+type BlindedEvent = NostrEvent & {blinded: boolean}
+const decryptCache = new LRUCache<string, BlindedEvent>({max: 1000})
 
 export class PrivateMessageManager {
   private pool: NostrPool;
@@ -67,9 +68,9 @@ export class PrivateMessageManager {
     );
   }
 
-  async decrypt(evx: NostrEvent, pubkey?: string) : Promise<NostrEvent> {
+  async decrypt(evx: NostrEvent, pubkey?: string) : Promise<BlindedEvent | null> {
     if (decryptCache.has(evx.id)) {
-      return decryptCache.get(evx.id)
+      return decryptCache.get(evx.id) || null
     }
     let ev = {...evx, blinded: false}
     try {
@@ -132,8 +133,8 @@ export class PrivateMessageManager {
       })
     );
 
-    return mapped.filter((ev: NostrEvent | null) => {
-      return ev != null;
+    return mapped.filter((ev: BlindedEvent | null) => {
+      return ev;
     }) as NostrEvent[];
   }
 
