@@ -4,7 +4,7 @@ import { Filter, matchFilter, nip04 } from 'nostr-tools';
 import { NostrPool, NostrEvent } from '.';
 import { LRUCache } from 'lru-cache'
 
-const decryptCache = new LRUCache({max: 1000})
+const decryptCache = new LRUCache<string, NostrEvent>({max: 1000})
 
 export class PrivateMessageManager {
   private pool: NostrPool;
@@ -67,7 +67,7 @@ export class PrivateMessageManager {
     );
   }
 
-  async decrypt(evx: NostrEvent, pubkey?: string) {
+  async decrypt(evx: NostrEvent, pubkey?: string) : Promise<NostrEvent> {
     if (decryptCache.has(evx.id)) {
       return decryptCache.get(evx.id)
     }
