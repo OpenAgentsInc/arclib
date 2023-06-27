@@ -12,6 +12,7 @@ interface SubInfo {
 export class ReconnPool extends SimplePool {
   keepClosed: Set<string>
   reconnectTimeout: number;
+  timer: any;
 
   constructor(opts: { eoseSubTimeout?: number; getTimeout?: number, reconnectTimeout?: number } = {}) {
     super(opts)
@@ -24,7 +25,8 @@ export class ReconnPool extends SimplePool {
     const r: Relay = await super.ensureRelay(url)
     r.on('disconnect', () => {
       console.error("lost connection", url)
-      setTimeout(() => {
+      clearTimeout(this.timer)
+      this.timer = setTimeout(() => {
         if (!this.keepClosed.has(url)) {
           console.error("reconnect", url)
           this.ensureRelay(url)
@@ -35,6 +37,7 @@ export class ReconnPool extends SimplePool {
   }
 
   async close(relays: string[]) {
+    clearTimeout(this.timer)
     relays.forEach(val=>this.keepClosed.add(val))
     super.close(relays)
   }
