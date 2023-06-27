@@ -227,10 +227,11 @@ export class EncChannel {
 
   async decrypt(
     channel: {id: string, privkey: string},
-    ev: NostrEvent,
+    evx: NostrEvent,
     unwrap = true
   ): Promise<NostrEvent | null> {
     const ident = new ArcadeIdentity(channel.privkey);
+    const ev = {...evx}
     try {
       const dec = await ident.nip04XDecrypt(
         channel.privkey,
@@ -260,13 +261,19 @@ export class EncChannel {
   async list(
     channel: {id: string, privkey: string},
     filter: Filter = {},
-    db_only = false
+    db_only = false,
+    callback?: (ev:NostrEvent)=>Promise<void>
   ): Promise<NostrEvent[]> {
     if (!channel.id) throw new Error('channel id is required');
 
     const lst = await this.pool.list(
       [{ kinds: [402], '#p': [channel.id], ...filter }],
-      db_only
+      db_only,
+      callback && (async (ev) => {
+        const dec = await this.decrypt(channel, ev)
+        if (dec)
+          callback(ev)
+      })
     );
 
     const map = await Promise.all(
