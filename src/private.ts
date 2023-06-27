@@ -1,7 +1,10 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { Filter, matchFilter, nip04 } from 'nostr-tools';
-import { NostrPool, NostrEvent, UnsignedEvent, ArcadeIdentity } from '.';
+import { NostrPool, NostrEvent } from '.';
+import { LRUCache } from 'lru-cache'
+
+const decryptCache = new LRUCache({max: 1000})
 
 export class PrivateMessageManager {
   private pool: NostrPool;
@@ -65,6 +68,9 @@ export class PrivateMessageManager {
   }
 
   async decrypt(evx: NostrEvent, pubkey?: string) {
+    if (decryptCache.has(evx.id)) {
+      return decryptCache.get(evx.id)
+    }
     let ev = {...evx, blinded: false}
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
@@ -99,6 +105,7 @@ export class PrivateMessageManager {
           ev.content
         );
       }
+      decryptCache.set(ev.id, ev)
       return ev.content ? ev : null;
     } catch (e) {
       // can't decrypt, probably spam or whatever
