@@ -137,7 +137,7 @@ export class PrivateMessageManager {
 
     return mapped.filter((ev: BlindedEvent | null) => {
       return ev;
-    })
+    }) as BlindedEvent[]
   }
 
   public filter(pubkey?: string) {
