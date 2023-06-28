@@ -40,11 +40,11 @@ export class PrivateMessageManager {
     replyTo?: string,
     tags: string[][] = []
   ): Promise<NostrEvent> {
+    tags.push(['p', pubkey])
     if (replyTo) {
       tags.push(['e', replyTo, this.pool.relays[0], 'reply']);
     }
-    const inner = {content, pubkey: this.pool.ident.pubKey, tags, kind: 1}
-    const ev = await this.pool.ident.nipXXEncrypt(pubkey, inner);
+    const ev = await this.pool.ident.nip44XEncrypt(pubkey, content, tags)
     return await this.pool.sendRaw(ev);
   }
 
@@ -142,13 +142,13 @@ export class PrivateMessageManager {
 
   public filter(pubkey?: string) {
     const filter_ex: Filter<number>[] = [
-      { kinds: [4, 99, 1059], '#p': [this.pool.ident.pubKey] },
+      { kinds: [4], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
       filter_ex[0].authors = [pubkey]
 
       filter_ex.push({
-        kinds: [4, 99, 1059],
+        kinds: [4],
         authors: [this.pool.ident.pubKey],
         '#p': [pubkey],
       });

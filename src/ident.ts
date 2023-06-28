@@ -190,6 +190,7 @@ export class ArcadeIdentity {
   async nip44XEncrypt(
     pubkey: string,
     content: string,
+    tags: string[][] = [],
     version: number = CURRENT_ENCRYPTION_VERSION
   ): Promise<NostrEvent> {
     const [ss, encrypted] = await this.nip04XEncryptSS(
@@ -204,7 +205,7 @@ export class ArcadeIdentity {
       content: encrypted,
       pubkey: tmpId.pubKey,
       created_at: Math.floor(Date.now()/1000),
-      tags: []
+      tags: tags
     };
     const signed = await tmpId.signEvent(unsigned);
     return signed;
@@ -229,6 +230,7 @@ export class ArcadeIdentity {
     // theoretically, we could, instead, sign with the shared secret
     // that would make our message "plausibly deniable"
     // but still able to be authenticated by the recipient
+    // WARNING: no way to sender-index these properly... it's problematic for the stateless model
     const event = await this.signEvent(inner);
     const content = JSON.stringify(event);
     const iv = randomBytes(16);
