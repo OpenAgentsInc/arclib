@@ -142,6 +142,7 @@ export class ChannelManager {
       about: el.about,
       picture: el.picture,
       author: el.author as string,
+      privkey: el.privkey
     }));
     const pub = await listChannels(this.pool, db_only);
     ret = ret.concat(
