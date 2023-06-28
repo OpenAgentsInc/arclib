@@ -31,7 +31,7 @@ export class EncChannel {
   async listChannels(db_only?: boolean): Promise<EncChannelInfo[]> {
     console.log('listing enc channels');
     const filt = {
-      kinds: [99, 1059],
+      kinds: [99],
       '#p': [this.pool.ident.pubKey],
     };
     const map = await Promise.all(

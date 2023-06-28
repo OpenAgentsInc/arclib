@@ -45,10 +45,11 @@ test('dm:directed 44x', async () => {
   await pool2.setRelays(relays);
   const dms1 = new PrivateMessageManager(pool1);
   const dms2 = new PrivateMessageManager(pool2);
-  const ev = await dms1.send44X(ident2.pubKey, "yo")
+  const ev = await dms1.send44X(ident2.pubKey, "zz", "XXXX")
   console.log(ev)
-  assert((await dms2.list({}, false, ident1.pubKey))[0].content == 'yo');
-  assert((await dms1.list({}, false, ident2.pubKey))[0].content == 'yo');
+  assert((await dms1.list({"#e": ["XXXX"]}, false, ident2.pubKey))[0].content == 'zz');
+  assert((await dms2.list({"#e": ["XXXX"]}, false, ident1.pubKey))[0].content == 'zz');
+  assert((await dms2.list({"#e": ["XXXX"]}, false, [ident1.pubKey, ident2.pubKey]))[0].content == 'zz');
   pool1.close();
   pool2.close();
 });

@@ -1,6 +1,6 @@
 /* eslint-disable @typescript-eslint/no-explicit-any */
 
-Object.assign(global, { crypto: require('crypto') });
+Object.assign(global, { crypto: require('crypto').webcrypto });
 
 import {
   nip19,
@@ -72,10 +72,16 @@ describe('ident:', () => {
     const bob = new ArcadeIdentity(
      sk
     );
-    const event = await alice.nip44XEncrypt(bob.pubKey, "data")
+    const event = await alice.nip44XEncrypt(bob.pubKey, "data", [])
     const dec = await bob.nip44XDecrypt(alice.pubKey, event.content)
     expect(dec.content).toEqual("data")
     expect(dec.pubkey).toEqual(alice.pubKey)
+    const dec2 = await bob.nip44XDecryptAny([alice.pubKey, bob.pubKey], event)
+    expect(dec2.content).toEqual("data")
+    expect(dec2.pubkey).toEqual(alice.pubKey)
+    
+    event.pubkey = alice.pubKey
+    expect(bob.nip44XDecryptAny([alice.pubKey, bob.pubKey], event)).rejects.toThrow("no decryption found")
   })
 
   it('returns a valid ArcadeEvent', async () => {

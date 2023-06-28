@@ -17,6 +17,7 @@ import { sha256 } from '@noble/hashes/sha256';
 import { randomBytes } from '@noble/hashes/utils';
 import { base64 } from '@scure/base';
 import * as utils from '@noble/curves/abstract/utils';
+import { LRUCache } from 'lru-cache';
 
 /* eslint-disable @typescript-eslint/ban-ts-comment, no-global-assign */
 // @ts-ignore
@@ -27,6 +28,7 @@ if (typeof crypto !== 'undefined' && !crypto.subtle && crypto.webcrypto) {
 
 const utf8Encoder = new TextEncoder();
 const utf8Decoder = new TextDecoder();
+const ssCache = new LRUCache<string[], Uint8Array>({max:500})
 
 export interface NostrEvent {
   id: string;
@@ -109,12 +111,12 @@ export class ArcadeIdentity {
     version: number = CURRENT_ENCRYPTION_VERSION,
     iv?: Uint8Array
   ): Promise<[Uint8Array, string]> {
-    const key = secp256k1.getSharedSecret(privkey, '02' + pubkey);
-    const normalizedKey = key.slice(1, 33);
+    const normalizedKey = this.fastSS(pubkey, privkey)
     iv = iv ?? randomBytes(16);
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
     const plaintext = utf8Encoder.encode(content);
+
     const cryptoKey = await crypto.subtle.importKey(
       'raw',
       derivedKey,
@@ -155,8 +157,7 @@ export class ArcadeIdentity {
 
     const iv = base64.decode(ivb64);
     const ciphertext = base64.decode(ctb64);
-    const key = secp256k1.getSharedSecret(privkey, '02' + pubkey);
-    const normalizedKey = key.slice(1, 33);
+    const normalizedKey = this.fastSS(pubkey, privkey)
 
     const derivedKey = hkdf(sha256, normalizedKey, iv, undefined, 32);
 
@@ -179,18 +180,30 @@ export class ArcadeIdentity {
     return text;
   }
 
+  fastSS(
+    pubkey: string,
+    privkey: string,
+  ): Uint8Array {
+    const has = ssCache.get([privkey, pubkey]);
+    if (has)
+      return has
+    const key = secp256k1.getSharedSecret(privkey, '02' + pubkey);
+    const ss = key.slice(1, 33);
+    ssCache.set([privkey, pubkey], ss)
+    return ss
+  }
+
   nip44XIdent(
     pubkey: string,
   ): ArcadeIdentity {
-    const key = secp256k1.getSharedSecret(this.privKey, '02' + pubkey);
-    const ss = key.slice(1, 33);
+    const ss = this.fastSS(pubkey, this.privKey)
     return new ArcadeIdentity(utils.bytesToHex(ss))
   }
 
   async nip44XEncrypt(
     pubkey: string,
     content: string,
-    tags: string[][] = [],
+    tags: string[][],
     version: number = CURRENT_ENCRYPTION_VERSION
   ): Promise<NostrEvent> {
     const [ss, encrypted] = await this.nip04XEncryptSS(
@@ -222,25 +235,47 @@ export class ArcadeIdentity {
     ))
   }
 
+  async nip44XDecryptAny(
+    pubkeys: string[],
+    ev: NostrEvent
+  ): Promise<{content: string, pubkey: string}> {
+    const res = await Promise.all(pubkeys.map(async (pubkey)=>{
+      const tmpid = this.nip44XIdent(pubkey)
+      if (tmpid.pubKey == ev.pubkey) {
+        return await this.nip44XDecrypt(pubkey, ev.content)
+      }
+    }))
+    const any = res.filter(ev=>ev)
+    if (any && any[0]) {
+      return any[0]
+    }
+    throw Error("no decryption found")
+  }
+
+
   async nipXXEncrypt(
     pubkey: string,
     inner: UnsignedEvent,
     version: number = CURRENT_ENCRYPTION_VERSION
   ): Promise<NostrEvent> {
-    // theoretically, we could, instead, sign with the shared secret
-    // that would make our message "plausibly deniable"
-    // but still able to be authenticated by the recipient
-    // WARNING: no way to sender-index these properly... it's problematic for the stateless model
     const event = await this.signEvent(inner);
     const content = JSON.stringify(event);
     const iv = randomBytes(16);
 
+    /*
+     * This mechanism allows the user to decrypt sent-messages later
+     * However, it probably needs a bit more review before it's used for real
+     * Also, we need a way to index these messages, locally, as "sent by me"
+     
     const dpriv_n =
       (utils.bytesToNumberBE(utils.hexToBytes(this.privKey)) *
         utils.bytesToNumberBE(iv)) %
       secp256k1.CURVE.n;
     const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32));
     
+    */
+    
+    const epriv = generatePrivateKey();
     const epub = getPublicKey(epriv);
     const encrypted = await this.nip04XEncrypt(
       epriv,
@@ -250,7 +285,7 @@ export class ArcadeIdentity {
       iv
     );
     const unsigned = {
-      kind: 1059,
+      kind: 99,
       content: encrypted,
       pubkey: this.pubKey,
       created_at: inner.created_at,
@@ -273,7 +308,7 @@ export class ArcadeIdentity {
           utils.bytesToNumberBE(iv)) %
         secp256k1.CURVE.n;
       const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32));
-      // decrypt my own sent message
+      // decrypt my own sent message?
       text = await this.nip04XDecrypt(epriv, ptag, event.content);
     } else {
       text = await this.nip04XDecrypt(
