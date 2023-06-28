@@ -40,11 +40,11 @@ export class PrivateMessageManager {
     replyTo?: string,
     tags: string[][] = []
   ): Promise<NostrEvent> {
-    const oth: string[][] = [];
     if (replyTo) {
-      oth.push(['e', replyTo, this.pool.relays[0], 'reply']);
+      tags.push(['e', replyTo, this.pool.relays[0], 'reply']);
     }
-    const ev = await this.pool.ident.nip44XEncrypt(pubkey, content);
+    const inner = {content, pubkey: this.pool.ident.pubKey, tags, kind: 1}
+    const ev = await this.pool.ident.nipXXEncrypt(pubkey, inner);
     return await this.pool.sendRaw(ev);
   }
 
