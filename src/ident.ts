@@ -226,24 +226,19 @@ export class ArcadeIdentity {
     inner: UnsignedEvent,
     version: number = CURRENT_ENCRYPTION_VERSION
   ): Promise<NostrEvent> {
+    // theoretically, we could, instead, sign with the shared secret
+    // that would make our message "plausibly deniable"
+    // but still able to be authenticated by the recipient
     const event = await this.signEvent(inner);
     const content = JSON.stringify(event);
     const iv = randomBytes(16);
 
-    /*
-     * This mechanism allows the user to decrypt sent-messages later
-     * However, it probably needs a bit more review before it's used for real
-     * Also, we need a way to index these messages, locally, as "sent by me"
-     
     const dpriv_n =
       (utils.bytesToNumberBE(utils.hexToBytes(this.privKey)) *
         utils.bytesToNumberBE(iv)) %
       secp256k1.CURVE.n;
     const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32));
     
-    */
-    
-    const epriv = generatePrivateKey();
     const epub = getPublicKey(epriv);
     const encrypted = await this.nip04XEncrypt(
       epriv,
@@ -253,7 +248,7 @@ export class ArcadeIdentity {
       iv
     );
     const unsigned = {
-      kind: 99,
+      kind: 1059,
       content: encrypted,
       pubkey: this.pubKey,
       created_at: inner.created_at,
@@ -276,7 +271,7 @@ export class ArcadeIdentity {
           utils.bytesToNumberBE(iv)) %
         secp256k1.CURVE.n;
       const epriv = utils.bytesToHex(utils.numberToBytesBE(dpriv_n, 32));
-      // decrypt my own sent message?
+      // decrypt my own sent message
       text = await this.nip04XDecrypt(epriv, ptag, event.content);
     } else {
       text = await this.nip04XDecrypt(

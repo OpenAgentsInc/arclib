@@ -76,7 +76,7 @@ export class PrivateMessageManager {
     let ev = {...evx, blinded: false}
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
-        if (ev.kind == 99) {
+        if ([1059, 99].includes(ev.kind)) {
           ev = {...await this.pool.ident.nipXXDecrypt(ev), blinded: false};
         } else {
           if (ev.content.endsWith("??1")) {
@@ -142,13 +142,13 @@ export class PrivateMessageManager {
 
   public filter(pubkey?: string) {
     const filter_ex: Filter<number>[] = [
-      { kinds: [4], '#p': [this.pool.ident.pubKey] },
+      { kinds: [4, 99, 1059], '#p': [this.pool.ident.pubKey] },
     ];
     if (pubkey) {
       filter_ex[0].authors = [pubkey]
 
       filter_ex.push({
-        kinds: [4],
+        kinds: [4, 99, 1059],
         authors: [this.pool.ident.pubKey],
         '#p': [pubkey],
       });
