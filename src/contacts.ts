@@ -54,17 +54,18 @@ export class ContactManager {
   async write() {
     const secretContacts = Array.from(this.contacts.values()).filter(e=>e.secret||e.legacy).map(e=>[e.pubkey, {legacy: e.legacy, secret: e.secret}])
     const publicContacts = Array.from(this.contacts.values()).filter(e=>!e.secret).map(e=>["p", e.pubkey])
-    await this.pool.send({
+    const encr = await this.pool.ident.selfEncrypt(JSON.stringify(secretContacts))
+    await Promise.all(
+      [this.pool.send({
       content: "",
       tags: publicContacts,
       kind: 3,
-    })
-    const encr = await this.pool.ident.selfEncrypt(JSON.stringify(secretContacts))
-    await this.pool.send({
+    }),
+     this.pool.send({
       content: encr,
       tags: [], 
-      kind: 20003,
-    })
+      kind: 10003,
+    })])
   }
 
   async maybeRead() {
@@ -96,7 +97,7 @@ export class ContactManager {
 
     const privR = await this.pool.get([{
       authors: [this.pool.ident.pubKey],
-      kinds: [20003],
+      kinds: [20003, 10003],
       limit: 1,
     }])
     

@@ -132,7 +132,7 @@ export class ChannelManager {
     }
   }
 
-  async listChannels(db_only?: boolean): Promise<ChannelInfo[]> {
+  async listChannels(db_only?: boolean, limit?: number): Promise<ChannelInfo[]> {
     let ret: ChannelInfo[];
     const enc = await this.enc.listChannels(db_only);
     ret = enc.map((el) => ({
