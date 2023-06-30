@@ -1,6 +1,6 @@
 import { NostrPool } from '.';
 
-type Profile = Record<string, number | string | boolean>
+export type Profile = Record<string, number | string | boolean>
 
 export class ProfileManager {
   public pool: NostrPool;
