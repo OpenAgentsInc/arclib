@@ -141,6 +141,7 @@ export async function resolvePubkey(input: string): Promise<string> {
                 const profile = await nip05.queryProfile("_" + input);
                 return profile!.pubkey;
             } catch {
+              // ok to fail here
             }
         }
 
@@ -149,12 +150,14 @@ export async function resolvePubkey(input: string): Promise<string> {
                 const profile = await nip05.queryProfile(input.slice(1) + suffix);
                 return profile!.pubkey;
             } catch {
+              // ok to fail here
             }
         }
     } else if (input.includes('@')) {
         const profile = await nip05.queryProfile(input);
         return profile!.pubkey;
     }
+    console.log("can't resolve" + input)
     throw Error("can't resolve" + input)
 }
 
