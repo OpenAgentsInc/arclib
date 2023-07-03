@@ -1,12 +1,13 @@
 /* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
 
 require('websocket-polyfill');
+require('isomorphic-unfetch');
 Object.assign(global, { crypto: require('crypto').webcrypto });
 
 import NostrMini from 'nostrmini';
 
 import { NostrPool, ArcadeIdentity } from '../src';
-import { ContactManager, Contact } from '../src/contacts';
+import { ContactManager, Contact, resolvePubkey } from '../src/contacts';
 
 const ident = ArcadeIdentity.generate();
 const ct1 = ArcadeIdentity.generate();
@@ -82,3 +83,13 @@ test('contact:legacy', async () => {
   expect(res[0]).toEqual({pubkey: ct1.pubKey, secret: false, legacy: true})
   await contacts.remove(ct1.pubKey)
 });
+
+
+test('contact:resolver', async() =>{
+    expect(await resolvePubkey("erik@arcade.chat")).toEqual("e6c2116f0cf0ac908c5637b3bb7868f3bf12fb02d1f6e3453969ea205b739069")
+    expect(await resolvePubkey("@erik")).toEqual("e6c2116f0cf0ac908c5637b3bb7868f3bf12fb02d1f6e3453969ea205b739069")
+    expect(await resolvePubkey("simulx@iris.to")).toEqual("3ef7277dc0870c8c07df0ee66829928301eb95785715a14f032aca534862bae0")
+    expect(await resolvePubkey("@fiatjaf.com")).toEqual("3bf0c63fcb93463407af97a5e5ee64fa883d107ef9e558472c4eb9aaaefa459d")
+    expect(await resolvePubkey("e6c2116f0cf0ac908c5637b3bb7868f3bf12fb02d1f6e3453969ea205b739069")).toEqual("e6c2116f0cf0ac908c5637b3bb7868f3bf12fb02d1f6e3453969ea205b739069")
+    expect(await resolvePubkey("npub18mmjwlwqsuxgcp7lpmnxs2vjsvq7h9tc2u26zncr9t99xjrzhtsqwx4vcz")).toEqual("3ef7277dc0870c8c07df0ee66829928301eb95785715a14f032aca534862bae0")
+})

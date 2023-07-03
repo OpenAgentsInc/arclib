@@ -1,6 +1,7 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
 import { NostrPool } from '.';
+import { nip19, nip05 } from 'nostr-tools';
 
 export class Contact {
   pubkey: string;
@@ -123,3 +124,37 @@ export class ContactManager {
     return contacts
   }
 }
+
+
+
+const hexRegEx = /^[0-9A-Fa-f]{64}$/;
+const suffixes = ['@arcade.chat', '@damus.io', '@iris.to', '@nostrplebs.com', '@nip05.social'];
+
+export async function resolvePubkey(input: string): Promise<string> {
+    if (input.startsWith('npub')) {
+        return nip19.decode(input).data.toString()
+    } else if (hexRegEx.test(input)) {
+        return input;
+    } else if (input.startsWith('@')) {
+        if (input.includes('.')) {
+            try {
+                const profile = await nip05.queryProfile("_" + input);
+                return profile!.pubkey;
+            } catch {
+            }
+        }
+
+        for (const suffix of suffixes) {
+            try {
+                const profile = await nip05.queryProfile(input.slice(1) + suffix);
+                return profile!.pubkey;
+            } catch {
+            }
+        }
+    } else if (input.includes('@')) {
+        const profile = await nip05.queryProfile(input);
+        return profile!.pubkey;
+    }
+    throw Error("can't resolve" + input)
+}
+
