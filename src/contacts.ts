@@ -30,6 +30,7 @@ export class ContactManager {
     if (has && has.secret == contact.secret && has.legacy == contact.legacy)
       return
       
+    await this.maybeRead()
     this.contacts.set(contact.pubkey, contact)
     await this.write()
   }

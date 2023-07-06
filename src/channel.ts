@@ -155,7 +155,14 @@ export class ChannelManager {
     return ret;
   }
 
+  async joinAll(ids: string[]): Promise<void> {
+    await this.maybeReadJoined()
+    ids.forEach(el=>this.joined.add(el))
+    await this.writeJoined()
+  }
+
   async join(id: string) {
+    await this.maybeReadJoined()
     this.joined.add(id)
     await this.writeJoined()
   }
