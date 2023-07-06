@@ -1,7 +1,7 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
 
 require('websocket-polyfill');
-Object.assign(global, { crypto: require('crypto') });
+Object.assign(global, { crypto: require('crypto').webcrypto });
 
 import NostrMini from 'nostrmini';
 
@@ -121,4 +121,32 @@ describe('ChannelManager', () => {
     });
     await pool.close();
   });
+
+  it('can join', async () => {
+    const pool = new NostrPool(ident);
+    await pool.setRelays(relays);
+    const echan = new ChannelManager(pool);
+    
+    // check write
+    await echan.join("xx")
+    expect(await echan.listJoined()).toEqual(["xx"])
+    await echan.join("xx")
+    expect(await echan.listJoined()).toEqual(["xx"])
+    await echan.join("yy")
+    expect(await echan.listJoined()).toEqual(["xx", "yy"])
+
+    // check serial
+    const pool2 = new NostrPool(ident);
+    await pool2.setRelays(relays);
+    const echan2 = new ChannelManager(pool2);
+    expect(await echan2.listJoined()).toEqual(["xx", "yy"])
+    await pool2.close();
+    
+    // check leave
+    await echan.leave("xx")
+    expect(await echan.listJoined()).toEqual(["yy"])
+
+    await pool.close();
+  });
+
 });
