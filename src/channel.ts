@@ -21,12 +21,16 @@ export class ChannelManager {
   private _knownChannels: ChannelInfo[] = [];
   enc: EncChannel;
   nip28: Nip28Channel;
+  joined: Set<string>
+  hasRead: boolean;
   //  private store: SqliteStore;
 
   constructor(pool: NostrPool) {
     this.pool = pool;
     this.enc = new EncChannel(pool);
     this.nip28 = new Nip28Channel(pool);
+    this.joined = new Set<string>;
+    this.hasRead = false;
   }
 
   async create(meta: ChannelInput): Promise<ChannelInfo> {
@@ -149,6 +153,62 @@ export class ChannelManager {
       pub.map((el) => ({ is_private: false, ...el } as ChannelInfo))
     );
     return ret;
+  }
+
+  async join(id: string) {
+    this.joined.add(id)
+    await this.writeJoined()
+  }
+
+  async leave(id: string) {
+    this.joined.delete(id)
+    await this.writeJoined()
+  }
+
+  async writeJoined() {
+    const joined = [...this.joined]
+    const encr = await this.pool.ident.selfEncrypt(JSON.stringify(joined))
+    await this.pool.send({
+      content: encr,
+      tags: [["d", "arcade-channels"]],
+      kind: 30040,
+    })
+  }
+  
+  async maybeReadJoined() {
+    if (!this.hasRead) {
+      await this.readJoined()
+      this.hasRead = true
+    }
+  }
+
+  async listJoined(): Promise<string[]> {
+    await this.maybeReadJoined()
+    return [...this.joined]
+  }
+
+  async readJoined(): Promise<void> {
+    console.log("reading")
+    const privR = await this.pool.get([{
+      authors: [this.pool.ident.pubKey],
+      kinds: [30040],
+      "#d": ["arcade-channels"],
+      limit: 1,
+    }])
+    console.log("got", privR)
+
+    const joined = new Set<string>()
+
+    if (privR && privR.content) {
+      try {
+        const decr = await this.pool.ident.selfDecrypt(privR.content)
+        console.log("got", decr)
+        const list: Array<string> = JSON.parse(decr)
+        this.joined = new Set(list)
+      } catch (e) {
+        console.log("can't load private contacts", e)
+      }
+    }
   }
 
   async list(info: {

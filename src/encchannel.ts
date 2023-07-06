@@ -160,11 +160,9 @@ export class EncChannel {
       })
     );
     const filt = map.filter((ev) => ev != null);
-    const red = filt.length
-      ? filt.reduce((_acc, curr) => {
-          return curr;
-        })
-      : null;
+    const red = filt.reduce((prev, curr) => {
+          return (curr ? curr.created_at : 0) > (prev ? prev.created_at : 0) ? curr : prev;
+        }, filt[0]||null)
     if (red) 
         return JSON.parse(red.content);
     const chan = await this.getChannelById(info.id, info.db_only)

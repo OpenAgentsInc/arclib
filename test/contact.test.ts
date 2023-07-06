@@ -34,6 +34,7 @@ test('contact:basic', async () => {
   await contacts.add({pubkey: ct1.pubKey, secret: false, legacy: false})
   
   res = await contacts.list()
+
   expect(res[0]).toEqual({pubkey: ct1.pubKey, secret: false, legacy: false})
   
   await contacts.readContacts()
