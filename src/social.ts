@@ -76,6 +76,8 @@ export class ArcadeSocial {
   public socialGraph: SocialGraph = {};
   public iteration = 1;
   public paused = false;
+  // idle=true indicates that the graph is fully updated and now entering a mode where it is simply checking a contact once per second sequentially to see if they are no longer fresh based on STALE_GRAPH.
+  public idle = false;
   private pausedOnKey: string | null = null;
   private pausedOnDegree = 1;
   constructor(pool: NostrPool, ident: ArcadeIdentity, autoStart = true) {
@@ -105,14 +107,6 @@ export class ArcadeSocial {
    * @param degree the current degree of separation from the user in this iteration
    */
   extendGraph(pubkey: PublicKey, degree = 1): void {
-    // check if paused
-    if (this.paused) {
-      // save where we left off for when we restart.
-      this.pausedOnKey = pubkey;
-      this.pausedOnDegree = degree;
-      return;
-    }
-
     // an array to store this iteration of extendGraph()'s validated events; invalid events are discarded and don't make it into this array.
     const events: EventTemplate[] = [];
 
@@ -129,7 +123,7 @@ export class ArcadeSocial {
 
       if (gotEvents.length === 0) {
         // no events were received
-        console.warn('no events received for', pubkey)
+        // console.warn('no events received for', pubkey)
         this.iterateGraph();
         return;
       }
@@ -205,6 +199,12 @@ export class ArcadeSocial {
   iterateGraph() {
     const now = Date.now()
     const graphKeys = Object.keys(this.socialGraph)
+    if (this.paused) {
+      // save where we left off for when we restart.
+      this.pausedOnKey = graphKeys[this.iteration];
+      this.pausedOnDegree = this.socialGraph[this.pausedOnKey].degree;
+      return;
+    }
     if (graphKeys.length === 0) {
       // the first pubkey yielded no contacts. We're done.
       console.warn('Please supply a pubkey with contacts to build a social graph.')
@@ -224,13 +224,15 @@ export class ArcadeSocial {
       now - this.socialGraph[contact].lastUpdated > STALE_GRAPH && 
       this.socialGraph[contact].degree + 1 <= GRAPH_DEPTH
     ) {
+      this.idle = false
       this.extendGraph(contact, this.socialGraph[contact].degree + 1)
       this.iteration++
     } else {
       // keep iterating
       // once per second to avoid resource hogging 
       this.iteration++
-      setTimeout(this.iterateGraph,1000)
+      this.idle = true
+      setTimeout( () => this.iterateGraph(),1000)
     }
   }
   /**
