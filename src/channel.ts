@@ -238,7 +238,7 @@ export class ChannelManager {
         info.cbkey
       );
     } else {
-      return await this.nip28.list(info.channel_id, info.filter, info.db_only);
+      return await this.nip28.list(info.channel_id, info.filter, info.db_only, info.callback, info.cbkey);
     }
   }
 }
