@@ -112,6 +112,8 @@ export class ArcadeSocial {
       this.pausedOnDegree = degree;
       return;
     }
+
+    // an array to store this iteration of extendGraph()'s validated events; invalid events are discarded and don't make it into this array.
     const events: EventTemplate[] = [];
 
     // get event handler storeContacts for pool subscription
@@ -120,16 +122,29 @@ export class ArcadeSocial {
     // set up a filter for pool subscription
     const filter: Filter<number> = { kinds: [3,0], authors: [pubkey] };
 
-    this.pool.sub([filter], storeContacts, () => {
-      // this is the EOSE callback
-      if (events.length === 0) {
+    const processEvents = async () => {
+      // get contact list events from pool so we can find the most recent one
+      // this will subscribe, get events from relays, store in database, and then return results from the database, hitting db in future rebuilds of social graph.
+      const gotEvents = await this.pool.list([filter], false)
+
+      if (gotEvents.length === 0) {
         // no events were received
         console.warn('no events received for', pubkey)
-        this.iterateGraph()
+        this.iterateGraph();
+        return;
       }
+
+      // store valid gotEvents in events array via storeContacts function.
+      gotEvents.map(storeContacts)
+      // stop using gotEvents now and use events instead.
+
+      // sort to get the most recent event at the front
       events.sort((a, b) => b.created_at - a.created_at)
+
       try {
-        this.buildGraph(pubkey, events[0].tags, degree)
+        const mostRecent = events[0]
+        const mostRecentContacts = mostRecent.tags
+        this.buildGraph(pubkey, mostRecentContacts, degree)
       } catch (error) {
         console.log('pubkey had no contacts', error)
         if (pubkey === this.ident.pubKey) {
@@ -141,8 +156,9 @@ export class ArcadeSocial {
           this.iterateGraph()
         }
       }
-      return Promise.resolve();
-    });
+      // return Promise.resolve();
+    }
+    processEvents()
   }
   async buildGraph(pubkey: PublicKey, contacts: string[][], degree: number): Promise<void> {
     // begin building social graph
