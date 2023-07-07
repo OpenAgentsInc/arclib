@@ -56,6 +56,7 @@ export class NostrPool {
   watch: Sub;
   db: ArcadeDb | undefined;
   filters: Map<string, SubInfo>;
+  subopts: SubscriptionOptions;
 
   constructor(ident: ArcadeIdentity, db?: ArcadeDb, subopts: SubscriptionOptions = {}) {
     this.ident = ident;
