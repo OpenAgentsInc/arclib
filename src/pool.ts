@@ -57,10 +57,11 @@ export class NostrPool {
   db: ArcadeDb | undefined;
   filters: Map<string, SubInfo>;
 
-  constructor(ident: ArcadeIdentity, db?: ArcadeDb) {
+  constructor(ident: ArcadeIdentity, db?: ArcadeDb, subopts: SubscriptionOptions = {}) {
     this.ident = ident;
     const pool = new ReconnPool();
     this.pool = pool;
+    this.subopts = subopts; 
     this.unsubMap = new Map<(ev: NostrEvent)=>void, (ev: NostrEvent)=>void>();
     this.db = db;
     this.filters = new Map<string, SubInfo>();
@@ -238,7 +239,7 @@ export class NostrPool {
         });
       }
       new_filters.forEach((f, i: number) => {
-        const sub = this.pool.sub(this.relays, [sub_filters[i]]);
+        const sub = this.pool.sub(this.relays, [sub_filters[i]], this.subopts);
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
         const dat = { sub: sub, eose_seen: false, cbs, last_hit: now };
