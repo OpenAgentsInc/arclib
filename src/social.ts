@@ -1,4 +1,4 @@
-import { ArcadeIdentity } from "./ident";
+import { ArcadeIdentity, NostrEvent } from "./ident";
 import { NostrPool } from "./pool";
 import { EventTemplate, Filter } from "nostr-tools";
 
@@ -260,20 +260,92 @@ export class ArcadeSocial {
   }
   /**
    * Social Distance from you to your pubkey is 0. Distance to someone you follow (friend) is 1. Distance to their friend is 2. Distances beyond this or unknown distances are 3.
+   * https://github.com/ArcadeLabsInc/arcade/wiki/ArcTrust-Reputation-via-Social-Graph-and-NIP-32
    * @param pubkey 
    * @returns number - social distance from you to pubkey
    */
   distance(pubkey: string) {
     if (pubkey === this.ident.pubKey) return 0
     if (!this.socialGraph[pubkey]) return 3
-    if (this.socialGraph[pubkey]) return this.socialGraph[pubkey].degree
     return this.socialGraph[pubkey].degree
   }
-
   weight(pubkey: string){
     const distance = this.distance(pubkey)
     if (distance === 0) return 10_000
     return 1 / distance * distance
+  }
+  async getReputation(pubkey: string){
+    // get all kind 1985 events for this pubkey
+    const filter: Filter<number> = {
+      kinds: [1985],
+      "#e": [pubkey],
+    };
+    try {
+      const events = await this.pool.list([filter])
+      // for each event author, get only the most recent event by created_at
+      type Ratings = {
+        [pubkey: string]: NostrEvent
+      }
+      const ratings: Ratings = {}
+      for (const event of events) {
+        if (!ratings[event.pubkey]) {
+          ratings[event.pubkey] = event
+        } else {
+          if (event.created_at > ratings[event.pubkey].created_at) {
+            ratings[event.pubkey] = event
+          }
+        }
+      }
+      type RatingScalar = {
+        [pubkey: string]: number
+      }
+      const ratingScores: RatingScalar = {}
+      // iterate through ratings and save valid ratings to ratingScores
+      for (const author of Object.keys(ratings)) {
+        const rating = ratings[author]
+        const ratingTags = rating.tags
+        // check if we have an array in the tags array with the first element of "l"
+        const label = ratingTags.find( (tag) => Array.isArray(tag) && tag[0] === 'l' )
+        if (!label) continue
+        // check if the label array has a 4th element that contains stringified JSON
+        const labelJSON = label[3]
+        if (!labelJSON) continue
+        // parse the JSON
+        const labelObj = JSON.parse(labelJSON)
+        // check if the JSON has a "quality" property
+        const quality = labelObj.quality
+        if (!quality) continue
+        // check if the quality property is a number
+        const qualityNumber = Number(quality)
+        if (isNaN(qualityNumber)) continue
+        // check if the quality number is between 0 and 1
+        if (qualityNumber < 0 || qualityNumber > 1) continue
+        // if all checks pass, add the quality number to the rating score for this author
+        ratingScores[author] = qualityNumber
+      }
+
+      const ratingWeights: RatingScalar = {}
+      const ratingScaledScore: RatingScalar = {}
+      // iterate through valid ratingScores and calculate the weight and scaled score for each author
+      for (const author of Object.keys(ratingScores)) {
+        const weight = this.weight(author)
+        ratingWeights[author] = weight
+        ratingScaledScore[author] = weight * ratingScores[author]
+      }
+
+      // calculate the sum of the weights in ratingWeights
+      const weightSum = Object.values(ratingWeights).reduce( (a,b) => a + b, 0)
+
+      // calculate the sum of the scaled scores in ratingScaledScore
+      const scaledScoreSum = Object.values(ratingScaledScore).reduce( (a,b) => a + b, 0)
+
+      const weightedAverageScore = scaledScoreSum / weightSum
+
+      // return the user's social score
+      return weightedAverageScore
+    } catch (error) {
+      console.log(error)
+    }
   }
 }
 
