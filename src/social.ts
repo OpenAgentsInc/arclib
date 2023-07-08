@@ -74,7 +74,7 @@ export class ArcadeSocial {
   public pool: NostrPool;
   private ident: ArcadeIdentity;
   public socialGraph: SocialGraph = {};
-  public iteration = 1;
+  public iteration = 0;
   public paused = false;
   // idle=true indicates that the graph is fully updated and now entering a mode where it is simply checking a contact once per second sequentially to see if they are no longer fresh based on STALE_GRAPH.
   public idle = false;
@@ -215,7 +215,7 @@ export class ArcadeSocial {
     if (this.iteration >= graphKeys.length) {
       // we've completed the graph. start over to continue refreshing it.
       // this process will stop when someone calls .pause()
-      this.iteration = 1
+      this.iteration = 0
     }
     // get contact
     const contact = graphKeys[this.iteration]
@@ -272,16 +272,16 @@ export class ArcadeSocial {
   weight(pubkey: string){
     const distance = this.distance(pubkey)
     if (distance === 0) return 10_000
-    return 1 / distance * distance
+    return 1 / ( distance * distance )
   }
   async getReputation(pubkey: string){
     // get all kind 1985 events for this pubkey
     const filter: Filter<number> = {
       kinds: [1985],
-      "#e": [pubkey],
+      "#p": [pubkey],
     };
     try {
-      const events = await this.pool.list([filter])
+      const events = await this.pool.list([filter], false)
       // for each event author, get only the most recent event by created_at
       type Ratings = {
         [pubkey: string]: NostrEvent
