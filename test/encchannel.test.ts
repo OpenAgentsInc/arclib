@@ -29,36 +29,68 @@ describe('EncChannel', () => {
     const pool = new NostrPool(ident);
     await pool.setRelays(relays);
     const echan = new EncChannel(pool);
-    const group = await echan.createPrivate({
-      name: 'name',
-      about: 'about',
-      picture: 'picture',
-    },
+    const group = await echan.createPrivate(
+      {
+        name: 'name',
+        about: 'about',
+        picture: 'picture',
+      },
       []
     );
     expect(await echan.list(group)).toHaveLength(0);
     expect(await echan.getChannelByName('name')).toBeTruthy();
     console.log('sending to channel', group.id);
-    const ev = await echan.send(group.pubkey as string, 'hello world');
+    const ev = await echan.send(group.id, 'hello world');
     console.log('sent event', ev);
     expect(await echan.list(group)).toHaveLength(1);
-    await pool.close();
+
+    const bob = ArcadeIdentity.generate();
+    const pool2 = new NostrPool(bob);
+    await pool2.setRelays(relays);
+    const echan2 = new EncChannel(pool2);
+
+    expect(await echan2.listChannels()).toHaveLength(0);
+
+    await echan.invite({ ...group, members: [bob.pubKey] });
+
+    expect(await echan2.listChannels()).toHaveLength(1);
+
+    pool.close();
+    pool2.close();
   });
 
   it('can meta', async () => {
     const pool = new NostrPool(ident);
     await pool.setRelays(relays);
     const echan = new EncChannel(pool);
-    const group = await echan.createPrivate({
+    const group = await echan.createPrivate(
+      {
+        name: 'name',
+        about: 'about',
+        picture: 'picture',
+      },
+      []
+    );
+    expect(await echan.getMeta(group)).toEqual({
       name: 'name',
       about: 'about',
       picture: 'picture',
-    },
-      []
-    );
-    await echan.setMeta(group.pubkey, {name: "bob", about: "bob", picture: "bob"})
-    await echan.setMeta(group.pubkey, {name: "bob2", about: "bob2", picture: "bob2"})
-    expect(await echan.getMeta(group)).toEqual({name: "bob2", about: "bob2", picture: "bob2"})
-    await pool.close();
+    });
+    await echan.setMeta(group.id, {
+      name: 'bob',
+      about: 'bob',
+      picture: 'bob',
+    });
+    await echan.setMeta(group.id, {
+      name: 'bob2',
+      about: 'bob2',
+      picture: 'bob2',
+    });
+    expect(await echan.getMeta(group)).toEqual({
+      name: 'bob2',
+      about: 'bob2',
+      picture: 'bob2',
+    });
+    pool.close();
   });
 });

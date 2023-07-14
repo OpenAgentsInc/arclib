@@ -1,27 +1,14 @@
 /* eslint-disable @typescript-eslint/no-unused-vars */
 
-import { Filter, matchFilter, nip04 } from 'nostr-tools';
-import { NostrPool, NostrEvent, UnsignedEvent } from '.';
+import { Filter, matchFilter } from 'nostr-tools';
+import { nip04 } from 'nostr-tools';
+import { NostrPool, NostrEvent } from '.';
+import { LRUCache } from 'lru-cache'
 
-export async function listChannels(
-  pool: NostrPool,
-  db_only = false
-): Promise<ChannelInfo[]> {
-  // todo: this should only use the store, not go and re-query stuff, being lazy to get things done
-  return (await pool.list([{ kinds: [40] }], db_only)).map((ent) => {
-    return { ...JSON.parse(ent.content), id: ent.id, author: ent.pubkey };
-  });
-}
+export type BlindedEvent = NostrEvent & {blinded: boolean}
+const decryptCache = new LRUCache<string, BlindedEvent>({max: 1000})
 
-interface ChannelInfo {
-  name: string;
-  about: string;
-  picture: string;
-  id?: string;
-  author?: string;
-}
-
-class PrivateMessageManager {
+export class PrivateMessageManager {
   private pool: NostrPool;
   //  private store: SqliteStore;
 
@@ -47,42 +34,70 @@ class PrivateMessageManager {
     return ev;
   }
 
-  async sendXX(
+  async send44X(
     pubkey: string,
-    content: UnsignedEvent,
-    version = 1
+    content: string,
+    replyTo?: string,
+    tags: string[][] = []
   ): Promise<NostrEvent> {
-    const ev = await this.pool.ident.nipXXEncrypt(pubkey, content, version)
-    return await this.pool.sendRaw(ev)
+    if (replyTo) {
+      tags.push(['e', replyTo, this.pool.relays[0], 'reply']);
+    }
+    const ev = await this.pool.ident.nip44XEncrypt(pubkey, content,  tags);
+    return await this.pool.sendRaw(ev);
   }
 
   sub(
     callback: (ev: NostrEvent) => void,
-    filter: Filter = {},
+    filter?: Filter,
     eose?: () => Promise<void>,
-    pubkey?: string 
+    pubkey?: string
   ) {
-    const filter_ex: Filter<number>[] = this.filter(pubkey);
+    const filter_ex: Filter<number>[] = this.filter(pubkey?[pubkey]:[]);
+    console.log('subbing', filter_ex);
     this.pool.sub(
       filter_ex,
-      async (ev) => {
-        const res = matchFilter(filter, ev) ? await this.decrypt(ev) : null;
-        if (res) {
-          callback(ev);
+      (ev) => {
+        if (!filter || matchFilter(filter, ev)) {
+          this.decrypt(ev, pubkey?[pubkey]:[]).then((got) => {
+            if (got) callback(got);
+          });
         }
       },
-      eose
+      async () => { await new Promise((res)=>setTimeout(res, 1)); if (eose) await eose() ; }
     );
   }
 
-  async decrypt(ev: NostrEvent) {
+  async decrypt(evx: NostrEvent, pubkeys: string[]) : Promise<BlindedEvent | null> {
+    if (decryptCache.has(evx.id)) {
+      return decryptCache.get(evx.id) || null
+    }
+    let ev = {...evx, blinded: false}
     try {
       if (ev.pubkey != this.pool.ident.pubKey) {
         if (ev.kind == 99) {
-          ev = await this.pool.ident.nipXXDecrypt(ev);
+          ev = {...await this.pool.ident.nipXXDecrypt(ev), blinded: false};
         } else {
-          ev.content = await this.pool.ident.nip04Decrypt(ev.pubkey, ev.content);
-        }
+          if (ev.content.endsWith("??1")) {
+            if (!pubkeys.length) {
+              console.log("can't decrypt if we don't know the channel")
+              throw Error("can't decrypt without channel pubkey")
+            } else {
+              const {content, pubkey: author} = await this.pool.ident.nip44XDecryptAny(
+                pubkeys,
+                ev
+              );
+              ev.content = content
+              ev.pubkey = author
+              ev.blinded = true
+            }
+          } else {
+            ev.content = await this.pool.ident.nip04Decrypt(
+              ev.pubkey,
+              ev.content
+            );
+          }
+       }
       } else {
         const pubkey = ev.tags.find((t) => t[0] == 'p')?.[1] as string;
         ev.content = await nip04.decrypt(
@@ -91,36 +106,64 @@ class PrivateMessageManager {
           ev.content
         );
       }
+      decryptCache.set(ev.id, ev)
       return ev.content ? ev : null;
     } catch (e) {
       // can't decrypt, probably spam or whatever
+      console.log("can't decrypt from", evx.pubkey)
       return null;
     }
   }
 
-  async list(filter: Filter = {}, db_only = false, pubkey?:string): Promise<NostrEvent[]> {
-    const filter_ex: Filter<number>[] = this.filter(pubkey);
-    const lst = await this.pool.list(filter_ex, db_only);
+  async list(
+    filter?: Filter,
+    db_only = false,
+    pubkey_or_keys: string | string[] = [],
+    callback?: (ev:NostrEvent)=>Promise<void>,
+    cbkey?: any
+  ): Promise<BlindedEvent[]> {
+    let pubkeys: string[]
+    if (!Array.isArray(pubkey_or_keys)) {
+      pubkeys = [pubkey_or_keys]
+    } else {
+      pubkeys = pubkey_or_keys
+    }
+    const filter_ex: Filter<number>[] = this.filter(pubkeys);
+    let cb = callback
+    if (callback) {
+        cb = async (ev:NostrEvent)=>{const evx = await this.decrypt(ev, pubkeys); if (evx) {await callback(evx)}}
+    }
+    const lst = await this.pool.list(filter_ex, db_only, cb, cbkey || callback);
     const mapped = await Promise.all(
       lst.map(async (ev: NostrEvent) => {
-        return matchFilter(filter, ev) ? await this.decrypt(ev) : null
+        return (!filter || matchFilter(filter, ev)) ? await this.decrypt(ev, pubkeys) : null;
       })
     );
 
-    return mapped.filter((ev: NostrEvent | null) => {
-      return ev != null;
-    }) as NostrEvent[];
+    return mapped.filter((ev: BlindedEvent | null) => {
+      return ev;
+    }) as BlindedEvent[]
   }
 
-  public filter(pubkey?: string) {
+  public filter(pubkeys: string[]) {
     const filter_ex: Filter<number>[] = [
-      { kinds: [4, 99], '#p': [this.pool.ident.pubKey] },
+      { kinds: [4], '#p': [this.pool.ident.pubKey] },
     ];
-    if (pubkey) {
-      filter_ex.push({ kinds: [4], authors: [this.pool.ident.pubKey], '#p': [pubkey] });
+    if (pubkeys.length) {
+      filter_ex[0].authors = pubkeys
+
+      filter_ex.push({
+        kinds: [4],
+        authors: [this.pool.ident.pubKey],
+        '#p': pubkeys,
+      });
+     
+      const tmpkeys = pubkeys.map(pubkey=>this.pool.ident.nip44XIdent(pubkey).pubKey)
+      filter_ex.push({
+        kinds: [4],
+        authors: tmpkeys,
+      });
     }
     return filter_ex;
   }
 }
-
-export default PrivateMessageManager;

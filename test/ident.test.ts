@@ -1,6 +1,5 @@
-/* eslint-disable @typescript-eslint/no-explicit-any */
-
-Object.assign(global, { crypto: require('crypto') });
+/* eslint-disable @typescript-eslint/no-explicit-any, @typescript-eslint/no-var-requires */
+Object.assign(global, { crypto: require('crypto').webcrypto });
 
 import {
   nip19,
@@ -17,7 +16,7 @@ function getTestKeys() {
   return [ nsec, npub ]
 }
 
-describe('signEvent', () => {
+describe('ident:', () => {
   const [ nsec, npub ] = getTestKeys();
 
   it('can nipxxencrypt', async () => {
@@ -40,14 +39,48 @@ describe('signEvent', () => {
     });
     const outer = await bob.nipXXEncrypt(alice.pubKey, inner, 1)
     const same = await alice.nipXXDecrypt(outer)
-    const same2 = await bob.nipXXDecrypt(outer)
+
+    /* disable ability to decrypt sent messages for now
+      const same2 = await bob.nipXXDecrypt(outer)
+    */
 
     // eslint-disable-next-line @typescript-eslint/ban-ts-comment
     // @ts-ignore 
     const comp = ({kind, tags, content, created_at, pubkey, id})=>({kind, tags, content, created_at, pubkey, id})
 
     expect(comp(same)).toStrictEqual(comp(inner))
-    expect(comp(same)).toStrictEqual(comp(same2))
+    /* disable ability to decrypt sent messages for now
+      expect(comp(same)).toStrictEqual(comp(same2))
+    */
+  })
+
+  it('can selfencrypt', async () => {
+    const bob = new ArcadeIdentity(
+      nsec
+    );
+    const content = await bob.selfEncrypt("data")
+    const dec = await bob.selfDecrypt(content)
+    expect(dec).toEqual("data")
+  })
+
+  it('can 44x encrypt', async () => {
+    const alice = new ArcadeIdentity(
+      nsec
+    );
+    const sk = generatePrivateKey();
+    const bob = new ArcadeIdentity(
+     sk
+    );
+    const event = await alice.nip44XEncrypt(bob.pubKey, "data", [])
+    const dec = await bob.nip44XDecrypt(alice.pubKey, event.content)
+    expect(dec.content).toEqual("data")
+    expect(dec.pubkey).toEqual(alice.pubKey)
+    const dec2 = await bob.nip44XDecryptAny([alice.pubKey, bob.pubKey], event)
+    expect(dec2.content).toEqual("data")
+    expect(dec2.pubkey).toEqual(alice.pubKey)
+    
+    event.pubkey = alice.pubKey
+    expect(bob.nip44XDecryptAny([alice.pubKey, bob.pubKey], event)).rejects.toThrow("no decryption found")
   })
 
   it('returns a valid ArcadeEvent', async () => {

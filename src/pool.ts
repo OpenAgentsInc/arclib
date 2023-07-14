@@ -1,12 +1,46 @@
-import { ArcadeDb } from './db';
+import type { ArcadeDb } from './db';
 import { ArcadeIdentity, NostrEvent, UnsignedEvent } from './ident';
-import { SimplePool, Filter, SubscriptionOptions, Sub, Pub } from 'nostr-tools';
+import { SimplePool, Filter, SubscriptionOptions, Sub, Pub, Relay } from 'nostr-tools';
 
 interface SubInfo {
   sub: Sub;
   eose_seen: boolean;
   cbs: Set<(event: NostrEvent) => void>;
   last_hit: number;
+}
+
+export class ReconnPool extends SimplePool {
+  keepClosed: Set<string>
+  reconnectTimeout: number;
+  timer: any;
+
+  constructor(opts: { eoseSubTimeout?: number; getTimeout?: number, reconnectTimeout?: number } = {}) {
+    super(opts)
+    this.keepClosed = new Set()
+    this.reconnectTimeout=this.reconnectTimeout||5000
+  }
+
+  async ensureRelay(url: string): Promise<Relay> {
+    this.keepClosed.delete(url)
+    const r: Relay = await super.ensureRelay(url)
+    r.on('disconnect', () => {
+      console.error("lost connection", url)
+      clearTimeout(this.timer)
+      this.timer = setTimeout(() => {
+        if (!this.keepClosed.has(url)) {
+          console.error("reconnect", url)
+          this.ensureRelay(url)
+        }
+      }, this.reconnectTimeout)
+    })
+    return r
+  }
+
+  async close(relays: string[]) {
+    clearTimeout(this.timer)
+    relays.forEach(val=>this.keepClosed.add(val))
+    super.close(relays)
+  }
 }
 
 // very thin wrapper using SimplePool + ArcadeIdentity
@@ -16,29 +50,61 @@ export class NostrPool {
   relays: string[] = [];
   unsupportedRelays: string[] = [];
 
-  private eventCallbacks: ((event: NostrEvent) => void)[] = [];
+  private eventCallbacks: ((event: NostrEvent) => void|Promise<void>)[] = [];
   private pool;
+  private unsubMap: Map<undefined|((ev: NostrEvent)=>void|Promise<void>), (ev: NostrEvent)=>void|Promise<void>>;
   watch: Sub;
   db: ArcadeDb | undefined;
   filters: Map<string, SubInfo>;
+  subopts: SubscriptionOptions;
 
-  constructor(ident: ArcadeIdentity, db?: ArcadeDb) {
+  constructor(ident: ArcadeIdentity, db?: ArcadeDb, subopts: SubscriptionOptions = {}) {
     this.ident = ident;
-    const pool = new SimplePool();
+    const pool = new ReconnPool();
     this.pool = pool;
+    this.subopts = subopts; 
+    this.unsubMap = new Map<(ev: NostrEvent)=>void, (ev: NostrEvent)=>void>();
     this.db = db;
     this.filters = new Map<string, SubInfo>();
   }
 
-  async list(filters: Filter<number>[], db_only = false): Promise<NostrEvent[]> {
+  async getRelay(uri: string): Promise<Relay> {
+    return await this.pool.ensureRelay(uri)
+  }
+
+  async get(filters: Filter<number>[], 
+             db_only = false 
+            ): Promise<NostrEvent|undefined> {
+    const lst = await this.list(filters, db_only)
+    const max = lst.reduce((best, cur)=>{return (cur.created_at > best.created_at) ? cur : best}, lst[0])
+    return max
+  }
+
+  async list(filters: Filter<number>[], 
+             db_only = false, 
+             callback?: (ev: NostrEvent)=>Promise<void>, 
+             cbkey?: any,
+            ): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
+      let cb: (ev: NostrEvent)=>Promise<any>
+
+      if (callback) {
+          cb = async (ev) => {
+            if (callback) {
+               await Promise.all([callback(ev), this.db?.saveEvent(ev)])
+            }
+          }
+          cbkey = cbkey??callback
+          this.unsubMap.set(cbkey, cb)
+      } else {
+        cb = async (ev) => this.db?.saveEvent(ev)
+      }
+
       if (db_only) {
         this.sub(
           filters,
-          async (ev) => {
-            await this.db?.saveEvent(ev);
-          },
+          cb,
           undefined,
           since
         );
@@ -49,9 +115,7 @@ export class NostrPool {
           try {
             this.sub(
               filters,
-              async (ev) => {
-                await this.db?.saveEvent(ev);
-              },
+              cb,
               async () => {
                 res();
               },
@@ -64,12 +128,13 @@ export class NostrPool {
       }
       return await this.db.list(filters);
     } else {
-      // subsccribe to save events
+      // subscribe to save events
       return await this.pool.list(this.relays, filters);
     }
   }
 
   async setRelays(relays: string[]): Promise<void> {
+    this.pool.keepClosed = new Set(this.relays)
     this.relays = relays;
     await Promise.all(
       relays.map((url) => {
@@ -136,8 +201,14 @@ export class NostrPool {
   unsub(callback: (event: NostrEvent) => void) {
     for (const [fil, ent] of this.filters.entries()) {
       ent.cbs.delete(callback);
+      const cbm = this.unsubMap.get(callback);
+      if (cbm) {
+          ent.cbs.delete(cbm);
+          this.unsubMap.delete(callback);
+      }
       if (!ent.cbs) {
         this.filters.delete(fil);
+        ent.sub.unsub()
       }
     }
   }
@@ -168,31 +239,31 @@ export class NostrPool {
           return { ...f, since };
         });
       }
-      const sub = this.pool.sub(this.relays, sub_filters);
-      new_filters.forEach((f) => {
+      new_filters.forEach((f, i: number) => {
+        const sub = this.pool.sub(this.relays, [sub_filters[i]], this.subopts);
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
         const dat = { sub: sub, eose_seen: false, cbs, last_hit: now };
         this.filters.set(JSON.stringify(f), dat);
-        sub.on('eose', () => {
-          dat.eose_seen = true;
-          if (eose) eose();
-        });
         sub.on('event', (ev) => {
           dat.cbs.forEach((sub) => {
             sub(ev);
           });
         });
+        sub.on('eose', () => {
+          dat.eose_seen = true;
+          if (eose) eose();
+        });
       });
     }
     old_filters.forEach((dat) => {
       if (dat) {
+        dat.cbs.add(callback);
+        dat.last_hit = now;
         if (eose) {
           if (dat.eose_seen) eose();
           else dat.sub.on('eose', eose);
         }
-        dat.cbs.add(callback);
-        dat.last_hit = now;
       }
     });
   }
@@ -215,7 +286,6 @@ export class NostrPool {
    */
   async publish(message: UnsignedEvent) {
     const event: NostrEvent = await this.ident.signEvent(message);
-    await this.db?.saveEvent(event);
     return [event, this.pool.publish(this.relays, event)] as [NostrEvent, Pub];
   }
 
@@ -230,18 +300,26 @@ export class NostrPool {
    */
   async send(message: UnsignedEvent): Promise<NostrEvent> {
     const [event, pubs] = await this.publish(message);
-    return new Promise<NostrEvent>((res) => {
+    return new Promise<NostrEvent>((res, rej) => {
+      setTimeout(()=>{rej("send timed out")}, 3000)
       pubs.on('ok', () => {
         res(event);
+      });
+      pubs.on('failed', (relay: string) => {
+        console.log("failed to publish", relay)
       });
     });
   }
 
   async sendRaw(message: NostrEvent): Promise<NostrEvent> {
     const [event, pubs] = await this.publishRaw(message);
-    return new Promise<NostrEvent>((res) => {
+    return new Promise<NostrEvent>((res, rej) => {
+      setTimeout(()=>{rej("send raw timed out")}, 3000)
       pubs.on('ok', () => {
         res(event);
+      });
+      pubs.on('failed', (relay: string) => {
+        console.log("failed to publish raw", relay)
       });
     });
   }

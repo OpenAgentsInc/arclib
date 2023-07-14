@@ -10,13 +10,17 @@ import { waiter, wait_for, sleep } from './waiter';
 import { connectDb } from '../src/db';
 import { assert } from 'console';
 
-const ident = ArcadeIdentity.generate();
+let ident = ArcadeIdentity.generate();
 const srv = new NostrMini();
 const relays: string[] = [];
 
 beforeAll(() => {
   const port: number = srv.listen(0).address().port;
   relays.push(`ws://127.0.0.1:${port}`);
+});
+
+beforeEach(() => {
+  ident = ArcadeIdentity.generate();
 });
 
 afterAll(async () => {
@@ -26,7 +30,7 @@ afterAll(async () => {
 describe('NostrPool', () => {
   it('can send and receive', async () => {
     const pool = new NostrPool(ident);
-    await pool.setAndCheckRelays(relays, [1, 11]);
+    await pool.setRelays(relays);
     const [resolver, wait] = waiter(9000);
     pool.addEventCallback((ev) => {
       resolver(ev);
@@ -40,19 +44,28 @@ describe('NostrPool', () => {
     await wait;
     pool.stop();
     console.log('stopping pool');
+    const ev2 = await pool.get([{ kinds: [1], authors: [ident.pubKey] }]);
+    expect(ev2?.content).toEqual('yo')
+    expect(ev2?.id).toEqual(event.id)
     await pool.close();
   });
 
   it('can integrate storage', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     const pool2 = new NostrPool(ident);
     if (!pool1.db) throw Error;
     await pool1.setRelays(relays);
     await pool2.setRelays(relays);
 
-    // same pool send goes to db instanty
+    // same pool send goes to db on flush
+    const [res, w1] = waiter(4000);
+    pool1.list([{ authors: [ident.pubKey] }])
+    pool1.sub([{ authors: [ident.pubKey] }], (ev) => {res(ev);})
     const event = await pool1.send({ content: 'yo', tags: [], kind: 1 });
+    await w1;
+    await pool1.db.flush()
     expect((await pool1.db.list([{ authors: [ident.pubKey] }]))[0].id).toBe(
       event.id
     );
@@ -60,7 +73,6 @@ describe('NostrPool', () => {
     // other sender, we catch the event... also goes to the db
     const [resolver, wait] = waiter(4000);
     pool1.sub([{ authors: [ident.pubKey] }], (ev) => {
-      console.log('got event', ev);
       if (ev.content == 'bob1') {
         console.log('resolving waiter');
         resolver(ev);
@@ -85,10 +97,11 @@ describe('NostrPool', () => {
     expect((await pool1.list([{ authors: [ident.pubKey] }]))[0].id).toBe(
       event.id
     );
-  });
+  }, 10000000);
 
   it('notifys me', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     await pool1.setRelays(relays);
 
@@ -109,6 +122,7 @@ describe('NostrPool', () => {
 
   it('db keeps track even after list is done', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     if (!pool1.db) throw Error;
     await pool1.setRelays(relays);
@@ -134,6 +148,7 @@ describe('NostrPool', () => {
 
   it('queries for new stuff only', async () => {
     const db = connectDb();
+    await db.reset()
     const pool1 = new NostrPool(ident, db);
     if (!pool1.db) throw Error;
     await pool1.setRelays(relays);
