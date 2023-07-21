@@ -208,7 +208,7 @@ export class EncChannel {
     return await this.pool.sendRaw(enc);
   }
 
-  async sub(
+  sub(
     channel: {id: string, privkey: string},
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}

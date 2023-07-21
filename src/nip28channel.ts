@@ -129,7 +129,7 @@ export class Nip28Channel {
     return ev;
   }
 
-  async sub(
+  sub(
     channel_id: string,
     callback: (ev: NostrEvent) => void,
     filter: Filter = {}

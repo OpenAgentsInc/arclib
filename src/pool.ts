@@ -106,7 +106,8 @@ export class NostrPool {
           filters,
           cb,
           undefined,
-          since
+          since,
+          true,
         );
       } else {
         // subscribe if needed, wait for eose
@@ -119,7 +120,8 @@ export class NostrPool {
               async () => {
                 res();
               },
-              since
+              since,
+              true
             );
           } catch (e) {
             rej(e);
@@ -200,11 +202,9 @@ export class NostrPool {
 
   unsub(callback: (event: NostrEvent) => void) {
     for (const [fil, ent] of this.filters.entries()) {
-      ent.cbs.delete(callback);
-      const cbm = this.unsubMap.get(callback);
-      if (cbm) {
-          ent.cbs.delete(cbm);
-          this.unsubMap.delete(callback);
+      if (ent.cbs.has(callback)) {
+        ent.sub.unsub()
+        ent.cbs.delete(callback);
       }
       if (!ent.cbs) {
         this.filters.delete(fil);
@@ -217,7 +217,8 @@ export class NostrPool {
     filters: Filter<number>[],
     callback: (event: NostrEvent) => void,
     eose?: () => Promise<void>,
-    since?: number
+    since?: number,
+    closeOnEose?: boolean
   ): void {
     // subcribe to filters
     // maintain filter-subscription map
@@ -240,7 +241,7 @@ export class NostrPool {
         });
       }
       new_filters.forEach((f, i: number) => {
-        const sub = this.pool.sub(this.relays, [sub_filters[i]], this.subopts);
+        const sub: Sub = this.pool.sub(this.relays, [sub_filters[i]], this.subopts);
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
         const dat = { sub: sub, eose_seen: false, cbs, last_hit: now };
@@ -253,6 +254,7 @@ export class NostrPool {
         sub.on('eose', () => {
           dat.eose_seen = true;
           if (eose) eose();
+          if (closeOnEose) sub.unsub();
         });
       });
     }
