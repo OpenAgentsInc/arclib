@@ -204,7 +204,12 @@ export class NostrPool {
     for (const [fil, ent] of this.filters.entries()) {
       if (ent.cbs.has(callback)) {
         ent.sub.unsub()
-        ent.cbs.delete(callback);
+      }
+      ent.cbs.delete(callback);
+      const cbm = this.unsubMap.get(callback);
+      if (cbm) {
+        ent.cbs.delete(cbm);
+        this.unsubMap.delete(callback);
       }
       if (!ent.cbs) {
         this.filters.delete(fil);
