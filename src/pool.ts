@@ -1,6 +1,7 @@
 import type { ArcadeDb } from './db';
 import { ArcadeIdentity, NostrEvent, UnsignedEvent } from './ident';
 import { SimplePool, Filter, SubscriptionOptions, Sub, Pub, Relay } from 'nostr-tools';
+import { LRUCache } from 'lru-cache'
 
 interface SubInfo {
   sub: Sub;
@@ -53,6 +54,7 @@ export class NostrPool {
   private eventCallbacks: ((event: NostrEvent) => void|Promise<void>)[] = [];
   private pool;
   private unsubMap: Map<undefined|((ev: NostrEvent)=>void|Promise<void>), (ev: NostrEvent)=>void|Promise<void>>;
+  private lruSub: LRUCache<string, SubInfo>
   watch: Sub;
   db: ArcadeDb | undefined;
   filters: Map<string, SubInfo>;
@@ -64,6 +66,7 @@ export class NostrPool {
     this.pool = pool;
     this.subopts = subopts; 
     this.unsubMap = new Map<(ev: NostrEvent)=>void, (ev: NostrEvent)=>void>();
+    this.lruSub = new LRUCache({ max: 3, dispose: (dat: SubInfo, filter: string) => { dat.sub.unsub() } })
     this.db = db;
     this.filters = new Map<string, SubInfo>();
   }
@@ -82,21 +85,21 @@ export class NostrPool {
 
   async list(filters: Filter<number>[], 
              db_only = false, 
-             callback?: (ev: NostrEvent)=>Promise<void>, 
+             callback?: (ev: NostrEvent) => Promise<void>, 
              cbkey?: any,
             ): Promise<NostrEvent[]> {
     if (this.db) {
       const since = await this.db.latest(filters);
-      let cb: (ev: NostrEvent)=>Promise<any>
+      let cb: (ev: NostrEvent) => Promise<any>
 
       if (callback) {
-          cb = async (ev) => {
-            if (callback) {
-               await Promise.all([callback(ev), this.db?.saveEvent(ev)])
-            }
+        cb = async (ev) => {
+          if (callback) {
+            await Promise.all([callback(ev), this.db?.saveEvent(ev)])
           }
-          cbkey = cbkey??callback
-          this.unsubMap.set(cbkey, cb)
+        }
+        cbkey = cbkey??callback
+        this.unsubMap.set(cbkey, cb)
       } else {
         cb = async (ev) => this.db?.saveEvent(ev)
       }
@@ -106,7 +109,7 @@ export class NostrPool {
           filters,
           cb,
           undefined,
-          since
+          since,
         );
       } else {
         // subscribe if needed, wait for eose
@@ -119,7 +122,7 @@ export class NostrPool {
               async () => {
                 res();
               },
-              since
+              since,
             );
           } catch (e) {
             rej(e);
@@ -198,13 +201,28 @@ export class NostrPool {
     this.eventCallbacks.map((cb) => this.watch.on('event', cb));
   }
 
+  getTotalSubs() {
+    return this.lruSub.size
+  }
+
+  hasSub(filter: Filter) {
+    return this.lruSub.has(JSON.stringify(filter))
+  }
+
   unsub(callback: (event: NostrEvent) => void) {
     for (const [fil, ent] of this.filters.entries()) {
+      const lruEnt = this.lruSub.peek(JSON.stringify(fil))
+      if(lruEnt) {
+        lruEnt.sub.unsub()
+      }
+      if (ent.cbs.has(callback)) {
+        ent.sub.unsub()
+      }
       ent.cbs.delete(callback);
       const cbm = this.unsubMap.get(callback);
       if (cbm) {
-          ent.cbs.delete(cbm);
-          this.unsubMap.delete(callback);
+        ent.cbs.delete(cbm);
+        this.unsubMap.delete(callback);
       }
       if (!ent.cbs) {
         this.filters.delete(fil);
@@ -217,7 +235,8 @@ export class NostrPool {
     filters: Filter<number>[],
     callback: (event: NostrEvent) => void,
     eose?: () => Promise<void>,
-    since?: number
+    since?: number,
+    closeOnEose?: boolean
   ): void {
     // subcribe to filters
     // maintain filter-subscription map
@@ -225,12 +244,15 @@ export class NostrPool {
     // optionally get callbacks on eose
     const new_filters: Filter[] = [];
     const old_filters: SubInfo[] = [];
+
     filters.forEach((f) => {
       const has = this.filters.get(JSON.stringify(f));
       if (has) old_filters.push(has);
       else new_filters.push(f);
     });
+
     const now = Date.now();
+
     if (new_filters.length) {
       let sub_filters = new_filters;
       if (since) {
@@ -239,23 +261,41 @@ export class NostrPool {
           return { ...f, since };
         });
       }
+
       new_filters.forEach((f, i: number) => {
-        const sub = this.pool.sub(this.relays, [sub_filters[i]], this.subopts);
+        const fil = JSON.stringify(f)
+        const isFetchMeta = (f.kinds?.includes(0) || f.kinds?.includes(3)) ?? false
+
+        // sub has found, do nothing for this case. Use .get to update recency
+        if(this.lruSub.get(fil)) return
+
+        // open sub for this filter
+        const sub: Sub = this.pool.sub(this.relays, [sub_filters[i]], this.subopts);
         const cbs = new Set<(event: NostrEvent) => void>();
         cbs.add(callback);
+        
         const dat = { sub: sub, eose_seen: false, cbs, last_hit: now };
-        this.filters.set(JSON.stringify(f), dat);
+        this.filters.set(fil, dat);
+        
+        // sub for user's metadata will be auto closed, no need to add to lru
+        if(!isFetchMeta) {
+          this.lruSub.set(fil, dat);
+        }
+        
         sub.on('event', (ev) => {
           dat.cbs.forEach((sub) => {
             sub(ev);
           });
         });
+
         sub.on('eose', () => {
           dat.eose_seen = true;
           if (eose) eose();
+          if (closeOnEose || isFetchMeta) sub.unsub();
         });
       });
     }
+
     old_filters.forEach((dat) => {
       if (dat) {
         dat.cbs.add(callback);

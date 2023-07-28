@@ -170,4 +170,25 @@ describe('NostrPool', () => {
     expect(ret.length).toBe(4);
     pool1.close();
   });
+
+  it('only handle total 3 subs', async () => {
+    const db = connectDb();
+    await db.reset()
+    const pool = new NostrPool(ident, db);
+    if (!pool.db) throw Error;
+    await pool.setRelays(relays);
+ 
+    await pool.send({ content: 'test 1', tags: [['p', 'lru1']], kind: 1 });
+    await pool.send({ content: 'test 2', tags: [['p', 'lru2']], kind: 1 });
+    await pool.send({ content: 'test 3', tags: [['p', 'lru3']], kind: 1 });
+    await pool.send({ content: 'test 4', tags: [['p', 'lru4']], kind: 1 });
+    
+    await pool.list([{ kinds: [1], '#p': ['lru1'] }]);
+    await pool.list([{ kinds: [1], '#p': ['lru2'] }]);
+    await pool.list([{ kinds: [1], '#p': ['lru3'] }]);
+    await pool.list([{ kinds: [1], '#p': ['lru4'] }]);
+
+    expect(pool.getTotalSubs()).toBe(3);
+    pool.close
+  })
 });
