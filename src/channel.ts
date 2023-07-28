@@ -116,14 +116,14 @@ export class ChannelManager {
     return await this.nip28.delete(event_id, tags);
   }
 
-  async sub(info: {
+  sub(info: {
     channel_id: string;
     callback: (ev: NostrEvent) => void;
     filter?: Filter;
     privkey?: string;
   }) {
     if (info.privkey) {
-      return await this.enc.sub(
+      return this.enc.sub(
         {
           id: info.channel_id,
           privkey: info.privkey,
@@ -132,7 +132,7 @@ export class ChannelManager {
         info.filter
       );
     } else {
-      return await this.nip28.sub(info.channel_id, info.callback, info.filter);
+      return this.nip28.sub(info.channel_id, info.callback, info.filter);
     }
   }
 
