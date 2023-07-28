@@ -8,3 +8,4 @@ export * from './nip28channel';
 export * from './encchannel';
 export * from './db';
 export * from './channel';
+export * from './social';
